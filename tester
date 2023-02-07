@@ -1,6 +1,4 @@
 #! /usr/bin/env python3
-
-
 import os
 import subprocess
 import argparse
@@ -8,7 +6,8 @@ import re
 from src.convertCNF import SudokuToCNF
 
 
-TEST_DIR = "test/"
+TEST_DIR = "test_results/"
+PUZZLE_DIR = "data/puzzles/"
 
 
 def sat_solve(print_time=False):
@@ -58,7 +57,7 @@ def main():
     args = parser.parse_args()
 
     # read /puzzles/p096_sudoku.txt
-    filename = "puzzles/p096_sudoku.txt"
+    filename = PUZZLE_DIR+"p096_sudoku.txt"
     file = open(filename, "r")
     # each puzzle is 9 lines long
     # headed by "Grid xx"

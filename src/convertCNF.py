@@ -79,7 +79,7 @@ class SudokuToCNF():
         return cnf
 
     def __fixed_cnf(self, file):
-        file.write('p cnf 729 5529\n')
+        file.write('p cnf 729 8829\n')
 
         self.__cell_one_number(file)
         
