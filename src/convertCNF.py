@@ -1,15 +1,23 @@
+import os
 from typing import Tuple
+from enum import Enum
+
+
+class Encoding(Enum):
+    MINIMAL = 0
+    EFFICIENT = 1
+    EXTENDED = 2
 
 
 class SudokuToCNF():
     def __init__(self) -> None:
         pass
 
-    def convert(self, sudoku: str) -> str:
+    def convert(self, sudoku: str, encoding=Encoding.MINIMAL) -> str:
         # parse the sudoku string
         sudoku_list, count = self.__parse(sudoku)
         # create the CNF
-        cnf = self.__create_cnf(sudoku_list, count)
+        cnf = self.__create_cnf(sudoku_list, count, encoding)
         return cnf
 
     def __getSeparator(self, sudoku: str) -> str:
@@ -52,11 +60,15 @@ class SudokuToCNF():
         cell = str(cell)
         return cell
 
-    def __create_cnf(self, sudoku_list: list, count: int) -> str:
-        filename = "data/sudoku_rules_out.txt"
-        file = open(filename, "w")
-        self.__fixed_cnf(file)
-        file.close()
+    def __create_cnf(self, sudoku_list: list, count: int, encoding=Encoding.MINIMAL) -> str:
+        filename = "data/sudoku_rules_" + encoding.name.lower()+".txt" 
+
+        # if the file doesn't exist, create it
+        # and write the sudoku rules to it
+        if not os.path.exists(filename):
+            file = open(filename, "w")
+            self.__fixed_cnf(file, encoding)
+            file.close()
         sudoku_rules = open(filename, "r")
         # add the header
 
@@ -78,16 +90,31 @@ class SudokuToCNF():
         cnf = header + cnf
         return cnf
 
-    def __fixed_cnf(self, file):
-        file.write('p cnf 729 8829\n')
+    def __fixed_cnf(self, file, encoding=Encoding.MINIMAL):
+        match encoding:
+            case Encoding.MINIMAL:
+                file.write('p cnf 729 8829\n')
+            case Encoding.EFFICIENT:
+                file.write('p cnf 729 11745\n')
+            case Encoding.EXTENDED:
+                file.write('p cnf 729 11988\n')
 
         self.__cell_one_number(file)
-        
+
         self.__num_once_in_row(file)
-        
+
         self.__num_once_in_column(file)
-        
+
         self.__num_once_in_box(file)
+
+        if encoding == Encoding.EFFICIENT:
+            self.__exactly_one_number(file)
+        elif encoding == Encoding.EXTENDED:
+            self.__exactly_one_number(file)
+            self.__each_number_at_least_once_row(file)
+            self.__each_number_at_least_once_col(file)
+            self.__each_number_at_least_once_box(file)
+
 
     def __cell_one_number(self, file):
         for y in range(1, 10):
@@ -130,3 +157,35 @@ class SudokuToCNF():
                                 for l in range(1, 4):
                                     file.write("-" + str(self.__cell((3*i+x), (3*j+y), z)) +
                                                " -" + str(self.__cell((3*i+k), (3*j+l), z)) + " 0\n")
+
+    def __exactly_one_number(self, file):
+        for i in range(1, 10):
+            for j in range(1, 10):
+                for k in range(1, 10):
+                    for l in range((k+1), 10):
+                        file.write("-" + str(self.__cell(i, j, k)) +
+                                   " -" + str(self.__cell(i, j, l)) + " 0\n")
+
+    def __each_number_at_least_once_row(self, file):
+        for i in range(1, 10):
+            for k in range(1, 10):
+                for j in range(1, 10):
+                    file.write(str(self.__cell(i, j, k)) + " ")
+                file.write("0\n")
+
+    def __each_number_at_least_once_col(self, file):
+        for j in range(1, 10):
+            for k in range(1, 10):
+                for i in range(1, 10):
+                    file.write(str(self.__cell(i, j, k)) + " ")
+                file.write("0\n")
+                
+    def __each_number_at_least_once_box(self, file):
+        for i in range(0, 3):
+            for j in range(0, 3):
+                for k in range(1, 10):
+                    for x in range(1, 4):
+                        for y in range(1, 4):
+                            file.write(str(self.__cell((3*i+x), (3*j+y), k)) + " ")
+                    file.write("0\n")
+    

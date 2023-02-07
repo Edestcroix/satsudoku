@@ -3,47 +3,12 @@ import os
 import subprocess
 import argparse
 import re
-from src.convertCNF import SudokuToCNF
+from timeit import Timer
+from src.convertCNF import SudokuToCNF, Encoding
 
 
 TEST_DIR = "test_results/"
 PUZZLE_DIR = "data/puzzles/"
-
-
-def sat_solve(print_time=False):
-    # iterate through CNF output and call minisat on each
-    times = []
-    for i in range(50):
-        filename = TEST_DIR+"cnf/p096_sudoku_" + str(i+1).zfill(2) + ".cnf"
-        outfile = TEST_DIR + "sol/p096_sudoku_" + str(i+1).zfill(2) + ".out"
-        statfile = TEST_DIR + "stat/p096_sudoku_" + str(i+1).zfill(2) + ".stat"
-        mkdir = "mkdir -p " + TEST_DIR + "sol" + " " + TEST_DIR + "stat"
-        os.system(mkdir)
-        # minisat command called as minisat <filename> <filename>.out | grep "CPU time" > <filename>.stat
-        if print_time:
-            command = "minisat " + filename + " " + \
-                outfile
-            # intercept stdout, don't let it print to terminal
-            output = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE).communicate()[0]
-            output = output.decode("utf-8").split("\n")
-            # get the CPU time from the output
-            for line in output:
-                if "Memory used" in line:
-                    print("---Test " + str(i+1).zfill(2) + "-----")
-                    print(line)
-                if "CPU time" in line:
-                    print(line)
-                    # extract the CPU time by matching regex for float
-                    times.append(re.findall(r"[-+]?\d*\.\d+|\d+", line))
-        else:
-            command = "minisat " + filename + " " + \
-                outfile + " > " + statfile
-            os.system(command)
-
-    # print the average CPU time
-    if times != []:
-        print("-----------------------------------")
-        print("Average CPU time: " + str(round(sum([float(x[0]) for x in times])/len(times), 4)) + " seconds")
 
 
 def main():
@@ -52,10 +17,79 @@ def main():
     # with argument flag -c
     # which shows the CPU time for each puzzle
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--cpu", action="store_true",
-                        help="show CPU time for each puzzle")
+    parser.add_argument("-s", "--silent", action="store_true",)
+    # add argument flag -t to specify which test to run
+    # default is to run all tests
+    parser.add_argument("-t", "--test", type=str, default="",
+                        help="test to run (easy, hard)")
+    parser.add_argument("-e", "--enc", type=str, default="min",
+                        help="encoding to use (min, eff, ext)")
+    parser.add_argument("-o", "--out", type=str,
+                        default="", help="output directory")
+    parser.add_argument("-a", "--all", action="store_true",
+                        help="run all tests")
     args = parser.parse_args()
 
+    if args.all:
+        if args.out == "":
+            out = TEST_DIR + "summary/"
+        else:
+            out = args.out
+            # fail if out is not specified or not a directory
+            if out == "" or not os.path.isdir(out):
+                print("Error: -o must be a directory when using -a")
+                return
+
+        # add / if not present
+        if out != "" and out[-1] != "/":
+            out += "/"
+    
+        msg = "Testing {0} puzzles with {1} encoding"
+
+        print("Running all tests, outputting to " + out)
+        print("This may take a while...")
+        time = lambda f: "Time taken: " + str(round(Timer(f).timeit(number=1), 4)) + "s"
+
+        print(format(msg.format("easy", "minimal")))
+        print(time(lambda: test_easy(True, Encoding.MINIMAL, out+"01-easy-min.txt")))
+        
+        print(format(msg.format("easy", "efficient")))
+        print(time(lambda: test_easy(True, Encoding.EFFICIENT, out+"02-easy-eff.txt")))
+        
+        print(format(msg.format("easy", "extended")))
+        print(time(lambda: test_easy(True, Encoding.EXTENDED, out+"03-easy-ext.txt")))
+
+
+        print(format(msg.format("hard", "minimal")))
+        print(time(lambda: test_hard(True, Encoding.MINIMAL, out+"04-hard-min.txt")))
+        
+        print(format(msg.format("hard", "efficient")))
+        print(time(lambda: test_hard(True, Encoding.EFFICIENT, out+"05-hard-eff.txt")))
+        
+        print(format(msg.format("hard", "extended")))
+        print(time(lambda: test_hard(True, Encoding.EXTENDED, out+"06-hard-ext.txt")))
+        
+        print("Done!")
+    else:
+        match args.enc:
+            case "eff": enc = Encoding.EFFICIENT
+            case "ext": enc = Encoding.EXTENDED
+            case _: enc = Encoding.MINIMAL
+
+        match args.test:
+            case "hard": test_hard(args.silent, enc, args.out)
+            case _: test_easy(args.silent, enc, args.out)
+
+
+def header(test="Easy", enc=Encoding.MINIMAL):
+    match enc:
+        case Encoding.EFFICIENT: enc = "Efficient"
+        case Encoding.EXTENDED: enc = "Extended"
+        case _: enc = "Minimal"
+    return test + " Test (" + enc + " Encoding)"
+
+
+def test_easy(silent=False, enc=Encoding.MINIMAL, out_dir=""):
     # read /puzzles/p096_sudoku.txt
     filename = PUZZLE_DIR+"p096_sudoku.txt"
     file = open(filename, "r")
@@ -67,28 +101,105 @@ def main():
 
     for i in range(50):
         # read the header
-        header = file.readline()
+        file.readline()
         # read the puzzle
         puzzle = ""
-        for j in range(9):
+        for _ in range(9):
             puzzle += file.readline()
         # convert to CNF
-        cnf = SudokuToCNF().convert(puzzle)
+        cnf = SudokuToCNF().convert(puzzle, enc)
         # write to file
         mkdir = "mkdir -p " + TEST_DIR
         os.system(mkdir)
-        mkdir = "mkdir -p " + TEST_DIR+"cnf"
+        mkdir = "mkdir -p " + TEST_DIR+"easy/cnf"
         os.system(mkdir)
 
         # pad number in filename with zero for single digits
-        filename = TEST_DIR+"cnf/p096_sudoku_" + str(i+1).zfill(2) + ".cnf"
+        filename = TEST_DIR+"easy/cnf/p096_sudoku_" + \
+            str(i+1).zfill(2) + ".cnf"
 
         outfile = open(filename, "w")
         outfile.write(cnf)
         outfile.close()
 
     # call sat_solve
-    sat_solve(args.cpu)
+    sat_solve(silent, TEST_DIR+"easy/", 50, out_dir, header("Easy", enc) )
+
+def test_hard(silent=False, enc=Encoding.MINIMAL, out_dir=""):
+    # read /puzzles/p096_sudoku.txt
+    filename = PUZZLE_DIR+"top95"
+    file = open(filename, "r")
+    # each puzzle is one line, there are 95 puzzles
+
+    for i in range(95):
+        # read the puzzle
+        puzzle = file.readline()
+        # convert to CNF
+        cnf = SudokuToCNF().convert(puzzle, enc)
+        # write to file
+        mkdir = "mkdir -p " + TEST_DIR
+        os.system(mkdir)
+        mkdir = "mkdir -p " + TEST_DIR+"hard/cnf"
+        os.system(mkdir)
+
+        # pad number in filename with zero for single digits
+        filename = TEST_DIR+"hard/cnf/p096_sudoku_" + \
+            str(i+1).zfill(2) + ".cnf"
+
+        outfile = open(filename, "w")
+        outfile.write(cnf)
+        outfile.close()
+
+    sat_solve(silent, TEST_DIR+"hard/", 95, out_dir, header("Hard", enc))
+
+
+def sat_solve(silent, dir="", c=50, out_dir="", header=""):
+    # iterate through CNF output and call minisat on each
+    os.system("mkdir -p " + dir)
+    times = []
+    to_out = ""
+    for i in range(c):
+        filename = dir+"cnf/p096_sudoku_" + str(i+1).zfill(2) + ".cnf"
+        outfile = dir + "sol/p096_sudoku_" + str(i+1).zfill(2) + ".out"
+        mkdir = "mkdir -p " + dir + "sol" + " " + dir + "stat"
+        os.system(mkdir)
+        # minisat command called as minisat <filename> <filename>.out | grep "CPU time" > <filename>.stat
+        command = "minisat " + filename + " " + \
+            outfile
+        # intercept stdout, don't let it print to terminal
+        output = subprocess.Popen(
+            command, shell=True, stdout=subprocess.PIPE).communicate()[0]
+        output = output.decode("utf-8").split("\n")
+        # get the CPU time from the output
+        for line in output:
+            if "Memory used" in line:
+                to_out += "---Test " + str(i+1).zfill(2) + "-"*24 + "\n"
+                to_out += line + "\n"
+            if "CPU time" in line:
+                to_out += line + "\n"
+                times.append(re.findall(r"[-+]?\d*\.\d+|\d+", line))
+
+    if times != []:
+        to_out += "---Average CPU time"+"-"*24 + "\n"
+        to_out += str(round(sum([float(x[0])
+                      for x in times])/len(times), 4)) + " seconds"
+
+    if to_out != "":
+        if out_dir == "" and not silent:
+            print(to_out)
+        else:
+            # check if a file was specified
+            to_out = header + "\n" + to_out
+            if out_dir[-4:] == ".txt":
+                # write to file
+                outfile = open(out_dir, "w")
+                outfile.write(to_out)
+                outfile.close()
+            else:
+                # write to file
+                outfile = open(out_dir + "test_results.txt", "w")
+                outfile.write(to_out)
+                outfile.close()
 
 
 if __name__ == "__main__":
