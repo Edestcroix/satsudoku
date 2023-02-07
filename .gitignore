@@ -2,5 +2,4 @@
 src/__pycache__/
 test/
 test_results/
-test.txt
-test_results.txt
+test*
