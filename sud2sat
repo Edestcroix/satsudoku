@@ -1,0 +1,18 @@
+#!/usr/bin/env python3
+
+from src.convertCNF import SudokuToCNF
+import fileinput
+
+
+def main():
+    # get a sudoku puzzle from stdin
+    sudoku = ""
+    for line in fileinput.input():
+        sudoku += line
+
+    # print the CNF to stdout
+    print(SudokuToCNF().convert(sudoku))
+
+
+if __name__ == "__main__":
+    main()

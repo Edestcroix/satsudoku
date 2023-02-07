@@ -1,0 +1,19 @@
+#!/usr/bin/env python3
+
+from src.convertSUD import SATToSudoku
+import fileinput
+
+
+def main():
+    # get a sudoku puzzle from stdin
+    sudoku = ""
+
+    for line in list(fileinput.input())[1:]:
+        sudoku += line
+
+    # print the CNF to stdout
+    print(SATToSudoku().convert(sudoku))
+
+
+if __name__ == "__main__":
+    main()

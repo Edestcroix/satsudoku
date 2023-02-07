@@ -1,0 +1,96 @@
+#! /usr/bin/env python3
+
+
+import os
+import subprocess
+import argparse
+import re
+from src.convertCNF import SudokuToCNF
+
+
+TEST_DIR = "test/"
+
+
+def sat_solve(print_time=False):
+    # iterate through CNF output and call minisat on each
+    times = []
+    for i in range(50):
+        filename = TEST_DIR+"cnf/p096_sudoku_" + str(i+1).zfill(2) + ".cnf"
+        outfile = TEST_DIR + "sol/p096_sudoku_" + str(i+1).zfill(2) + ".out"
+        statfile = TEST_DIR + "stat/p096_sudoku_" + str(i+1).zfill(2) + ".stat"
+        mkdir = "mkdir -p " + TEST_DIR + "sol" + " " + TEST_DIR + "stat"
+        os.system(mkdir)
+        # minisat command called as minisat <filename> <filename>.out | grep "CPU time" > <filename>.stat
+        if print_time:
+            command = "minisat " + filename + " " + \
+                outfile
+            # intercept stdout, don't let it print to terminal
+            output = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE).communicate()[0]
+            output = output.decode("utf-8").split("\n")
+            # get the CPU time from the output
+            for line in output:
+                if "Memory used" in line:
+                    print("---Test " + str(i+1).zfill(2) + "-----")
+                    print(line)
+                if "CPU time" in line:
+                    print(line)
+                    # extract the CPU time by matching regex for float
+                    times.append(re.findall(r"[-+]?\d*\.\d+|\d+", line))
+        else:
+            command = "minisat " + filename + " " + \
+                outfile + " > " + statfile
+            os.system(command)
+
+    # print the average CPU time
+    if times != []:
+        print("-----------------------------------")
+        print("Average CPU time: " + str(round(sum([float(x[0]) for x in times])/len(times), 4)) + " seconds")
+
+
+def main():
+
+    # set up argument parser
+    # with argument flag -c
+    # which shows the CPU time for each puzzle
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-c", "--cpu", action="store_true",
+                        help="show CPU time for each puzzle")
+    args = parser.parse_args()
+
+    # read /puzzles/p096_sudoku.txt
+    filename = "puzzles/p096_sudoku.txt"
+    file = open(filename, "r")
+    # each puzzle is 9 lines long
+    # headed by "Grid xx"
+    # where xx is the puzzle number
+    # the first puzzle is 1
+    # the last puzzle is 50
+
+    for i in range(50):
+        # read the header
+        header = file.readline()
+        # read the puzzle
+        puzzle = ""
+        for j in range(9):
+            puzzle += file.readline()
+        # convert to CNF
+        cnf = SudokuToCNF().convert(puzzle)
+        # write to file
+        mkdir = "mkdir -p " + TEST_DIR
+        os.system(mkdir)
+        mkdir = "mkdir -p " + TEST_DIR+"cnf"
+        os.system(mkdir)
+
+        # pad number in filename with zero for single digits
+        filename = TEST_DIR+"cnf/p096_sudoku_" + str(i+1).zfill(2) + ".cnf"
+
+        outfile = open(filename, "w")
+        outfile.write(cnf)
+        outfile.close()
+
+    # call sat_solve
+    sat_solve(args.cpu)
+
+
+if __name__ == "__main__":
+    main()
