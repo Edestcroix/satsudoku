@@ -5,10 +5,10 @@ import re
 import shutil
 import subprocess
 
-from src.convertCNF import Encoding
 import src.convertCNF as Cnf
+import src.convertSUD as Sud
 import src.tableMD as table
-
+from src.convertCNF import Encoding
 
 TEST_DIR = "benchmarks/"
 CACHE_DIR = ".working/"
@@ -99,7 +99,6 @@ def main():
         shutil.rmtree(CACHE_DIR)
 
 
-# TODO Rename this here and in `main`
 def copy_solution_dir(args):
     out_dir = RESULTS_DIR if args.out == "" else args.out
     # add trailing slash if not present

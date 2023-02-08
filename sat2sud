@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
-import src.convertSUD as Sud
 import fileinput
+
+import src.convertSUD as Sud
 
 
 def main():

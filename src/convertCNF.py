@@ -1,8 +1,8 @@
 import itertools
 import os
-from typing import Tuple
-from enum import Enum
 import re
+from enum import Enum
+from typing import Tuple
 
 
 class Encoding(Enum):
