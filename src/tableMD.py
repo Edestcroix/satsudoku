@@ -1,3 +1,22 @@
+'''This module contains a function to format output as markdown tables.'''
+
+'''This function creates a markdown table.
+Args:
+    title (str): The title of the table. This is printed once as a level 1 header at the top of the table.
+    rows (list): A list of lists. Each inner list represents a row in the table. Each element in the inner list is a cell in the table.
+    col_titles (list): A list of strings. Each string is the title of a column in the table.
+    sep_every (int): The number of rows between separators. At each interval, a separator is printed, used in
+                     combination with sep_func to break data into multiple tables. (I.e instead of calling this function
+                     multiple times, call it once and use sep_every and sep_func to break the data into multiple tables.)
+                     For best results, data in rows should have 'sep_every' rows per desired table.
+    sep_func (function): A function to generate table separators. The function should take a single argument, the number
+                         of the separator, and return a string. (E.g if outputting multiple test results, the function
+                         could be lambda n: f"Test {n}"). Do not put markdown header tags in the output:
+                         they are added automatically.
+    new_line (bool): Whether to add a new line after the last line of the output.
+'''
+
+
 def create(title, rows, col_titles, sep_every=3, sep_func=None, new_line=True):
     # find the longest string in each column
     col_widths = [max(len(str(x)) for x in col)
@@ -10,7 +29,7 @@ def create(title, rows, col_titles, sep_every=3, sep_func=None, new_line=True):
         if i % sep_every == 0:
             sep_count += 1
             out += __table_sep(sep_count, sep_func,
-                                    sep_line, col_widths, col_titles)
+                               sep_line, col_widths, col_titles)
 
         out += "| " + " | ".join((str(x).ljust(col_widths[j])
                                   for j, x in enumerate(row))) + " |\n"
@@ -18,6 +37,7 @@ def create(title, rows, col_titles, sep_every=3, sep_func=None, new_line=True):
     if new_line:
         out += "\n"
     return out
+
 
 def __table_sep(sep_count, sep_func, sep_line, col_widths, col_titles):
     out = ""

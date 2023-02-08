@@ -11,10 +11,11 @@ class Encoding(Enum):
     EXTENDED = 2
 
 
-def convert( sudoku: str, encoding=Encoding.MINIMAL) -> str:
+def convert(sudoku: str, encoding=Encoding.MINIMAL) -> str:
     # parse the sudoku string
     sudoku_list, count = __parse(sudoku)
     return __create_cnf(sudoku_list, count, encoding)
+
 
 def __getSeparator(sudoku: str) -> str:
     return next(
@@ -25,6 +26,7 @@ def __getSeparator(sudoku: str) -> str:
         ),
         "",
     )
+
 
 def __parse(sudoku: str) -> Tuple[list, int]:
     separator = ""
@@ -46,6 +48,7 @@ def __parse(sudoku: str) -> Tuple[list, int]:
             sudoku_list.append(cell)
     return (sudoku_list, count)
 
+
 def __cell(row: int, column: int, value: int) -> str:
     # encode the cell as a three digit number
     # first digit is the row, second is the column, third is the value
@@ -54,7 +57,8 @@ def __cell(row: int, column: int, value: int) -> str:
     cell = (81 * (row-1)) + (9 * (column-1)) + (value-1) + 1
     return str(cell)
 
-def __create_cnf( sudoku_list: list, count: int, encoding=Encoding.MINIMAL) -> str:
+
+def __create_cnf(sudoku_list: list, count: int, encoding=Encoding.MINIMAL) -> str:
     filename = f"data/sudoku_rules_{encoding.name.lower()}.cnf"
 
     # if the file doesn't exist, create it
@@ -83,7 +87,8 @@ def __create_cnf( sudoku_list: list, count: int, encoding=Encoding.MINIMAL) -> s
     cnf = header + cnf
     return cnf
 
-def __fixed_cnf( file, encoding=Encoding.MINIMAL):
+
+def __fixed_cnf(file, encoding=Encoding.MINIMAL):
     match encoding:
         case Encoding.MINIMAL:
             file.write('p cnf 729 8829\n')
@@ -107,13 +112,15 @@ def __fixed_cnf( file, encoding=Encoding.MINIMAL):
         __each_number_at_least_once_col(file)
         __each_number_at_least_once_box(file)
 
-def __cell_one_number( file):
+
+def __cell_one_number(file):
     for y, x in itertools.product(range(1, 10), range(1, 10)):
         for z in range(1, 10):
             file.write(f"{str(__cell(x, y, z))} ")
         file.write("0\n")
 
-def __num_once_in_row( file):
+
+def __num_once_in_row(file):
     for y, z, x in itertools.product(range(1, 10), range(1, 10), range(1, 10)):
         for i in range((x+1), 10):
             file.write(
@@ -121,7 +128,8 @@ def __num_once_in_row( file):
                 + " 0\n"
             )
 
-def __num_once_in_column( file):
+
+def __num_once_in_column(file):
     for x, z, y in itertools.product(range(1, 10), range(1, 10), range(1, 10)):
         for i in range((y+1), 10):
             file.write(
@@ -129,7 +137,8 @@ def __num_once_in_column( file):
                 + " 0\n"
             )
 
-def __num_once_in_box( file):
+
+def __num_once_in_box(file):
     for z, i, j, x, y in itertools.product(range(1, 10), range(3), range(3), range(1, 4), range(1, 4)):
         for k in range((y+1), 4):
             file.write(
@@ -143,7 +152,8 @@ def __num_once_in_box( file):
                 + " 0\n"
             )
 
-def __exactly_one_number( file):
+
+def __exactly_one_number(file):
     for i, j, k in itertools.product(range(1, 10), range(1, 10), range(1, 10)):
         for l in range((k+1), 10):
             file.write(
@@ -151,19 +161,22 @@ def __exactly_one_number( file):
                 + " 0\n"
             )
 
-def __each_number_at_least_once_row( file):
+
+def __each_number_at_least_once_row(file):
     for i, k in itertools.product(range(1, 10), range(1, 10)):
         for j in range(1, 10):
             file.write(f"{str(__cell(i, j, k))} ")
         file.write("0\n")
 
-def __each_number_at_least_once_col( file):
+
+def __each_number_at_least_once_col(file):
     for j, k in itertools.product(range(1, 10), range(1, 10)):
         for i in range(1, 10):
             file.write(f"{str(__cell(i, j, k))} ")
         file.write("0\n")
 
-def __each_number_at_least_once_box( file):
+
+def __each_number_at_least_once_box(file):
     for i, j, k in itertools.product(range(3), range(3), range(1, 10)):
         for x, y in itertools.product(range(1, 4), range(1, 4)):
             file.write(f"{str(__cell(3 * i + x, 3 * j + y, k))} ")

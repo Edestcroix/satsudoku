@@ -7,13 +7,12 @@ import subprocess
 
 import src.convertCNF as Cnf
 import src.convertSUD as Sud
-import src.tableMD as table
+from src.tableMD import create as create_table
 from src.convertCNF import Encoding
 
-TEST_DIR = "benchmarks/"
 CACHE_DIR = ".working/"
 PUZZLE_DIR = "data/puzzles/"
-RESULTS_DIR = TEST_DIR
+RESULTS_DIR = "benchmarks/"
 
 
 ROUND_AVG = 2
@@ -28,10 +27,9 @@ PROPOSITION_RATE = -1
 
 def main():
 
+
     if not os.path.isdir(CACHE_DIR):
         os.mkdir(CACHE_DIR)
-    if not os.path.isdir(RESULTS_DIR):
-        os.mkdir(RESULTS_DIR)
 
     # set up argument parser
     # with argument flag -c
@@ -53,7 +51,8 @@ def main():
                         help="keep converted CNF files and solver output")
     parser.add_argument("-S", "--summarize", action="store_true",
                         help="summarize results from -a")
-    parser.add_argument("-d", "--decode", action="store_true", help="decode solved puzzles")
+    parser.add_argument("-d", "--decode", action="store_true",
+                        help="decode solved puzzles")
     args = parser.parse_args()
 
     # fail -s specified without -o
@@ -88,8 +87,9 @@ def main():
         match args.test:
             case "hard": test_hard(args.silent, enc, args.out)
             case "standard": test_standard(args.silent, enc, args.out)
-            case _: print("Error: invalid test"); exit(1)
-
+            case _: 
+                print("Error: invalid test")
+                exit(1)
 
     if args.decode:
         copy_solution_dir(args)
@@ -165,20 +165,24 @@ def run_all_tests(args):
 def summarize(out, results):
 
     sum_file = (
-        f"{RESULTS_DIR}summary.md" if out == "" else f"{out}/summary.md")
+        f"{RESULTS_DIR}summary.md" if out == "" else f"{out}summary.md")
     def header_func(x): return "Averages ― Standard Puzzles" if\
-                        x == 1 else "Averages ― Hard Puzzles"
+        x == 1 else "Averages ― Hard Puzzles"
     cols = ["Encoding", "Decisions", "Decision Rate (dcsns/sec)",
             "Propositions", "Proposition Rate (props/sec)", "Time (seconds)"]
     with open(sum_file, "w") as f:
-        f.write(table.create("Results Summary", results, cols, sep_func=header_func, new_line=False))
+        f.write(create_table("Results Summary", results,
+                cols, sep_func=header_func, new_line=False))
 
 
 # TODO Rename this here and in `run_all_tests`
 def test_all_silent(out, summary=False):
-    results = [test_standard(True, Encoding.MINIMAL, f"{out}01-standard-min.md")]
-    results.append(test_standard(True, Encoding.EFFICIENT, f"{out}02-standard-eff.md"))
-    results.append(test_standard(True, Encoding.EXTENDED, f"{out}03-standard-ext.md"))
+    results = [test_standard(True, Encoding.MINIMAL,
+                             f"{out}01-standard-min.md")]
+    results.append(test_standard(
+        True, Encoding.EFFICIENT, f"{out}02-standard-eff.md"))
+    results.append(test_standard(
+        True, Encoding.EXTENDED, f"{out}03-standard-ext.md"))
     results.append(test_hard(True, Encoding.MINIMAL, f"{out}04-hard-min.md"))
     results.append(test_hard(True, Encoding.EFFICIENT, f"{out}05-hard-eff.md"))
     results.append(test_hard(True, Encoding.EXTENDED, f"{out}06-hard-ext.md"))
@@ -195,13 +199,16 @@ def test_all(out, summary=False):
     print("This may take a while...")
 
     print(format(msg.format("standard", "minimal")))
-    results = [test_standard(True, Encoding.MINIMAL, f"{out}01-standard-min.md")]
+    results = [test_standard(True, Encoding.MINIMAL,
+                             f"{out}01-standard-min.md")]
 
     print(format(msg.format("standard", "efficient")))
-    results.append(test_standard(True, Encoding.EFFICIENT, f"{out}02-standard-eff.md"))
+    results.append(test_standard(
+        True, Encoding.EFFICIENT, f"{out}02-standard-eff.md"))
 
     print(format(msg.format("standard", "extended")))
-    results.append(test_standard(True, Encoding.EXTENDED, f"{out}03-standard-ext.md"))
+    results.append(test_standard(
+        True, Encoding.EXTENDED, f"{out}03-standard-ext.md"))
 
     print(format(msg.format("hard", "minimal")))
     results.append(test_hard(True, Encoding.MINIMAL, f"{out}04-hard-min.md"))
@@ -212,10 +219,11 @@ def test_all(out, summary=False):
     print(format(msg.format("hard", "extended")))
     results.append(test_hard(True, Encoding.EXTENDED, f"{out}06-hard-ext.md"))
 
+    print("Done!")
     if summary:
         summarize(out, results)
+        print(f"Summary saved to {out}summary.md")
 
-    print("Done!")
 
 
 def header(test="Standard", enc=Encoding.MINIMAL):
@@ -261,12 +269,12 @@ def test_standard(silent=False, enc=Encoding.MINIMAL, out_dir=""):
 def test_hard(silent=False, enc=Encoding.MINIMAL, out_dir=""):
     # read /puzzles/p096_sudoku.txt
     filename = f"{PUZZLE_DIR}top95"
-    with open(filename, "r") as infile:
+    with open(filename, "r") as in_file:
         # each puzzle is one line, there are 95 puzzles
 
         for i in range(95):
             # read the puzzle
-            puzzle = infile.readline()
+            puzzle = in_file.readline()
             # convert to CNF
             cnf = Cnf.convert(puzzle, enc)
             # write to file
@@ -280,7 +288,8 @@ def test_hard(silent=False, enc=Encoding.MINIMAL, out_dir=""):
                 outfile.write(cnf)
 
         return [enc.name.lower().capitalize()] +\
-                sat_solve(silent, f"{CACHE_DIR}hard/", 95, out_dir,header("Hard", enc))
+            sat_solve(silent, f"{CACHE_DIR}hard/", 95,
+                      out_dir, header("Hard", enc))
 
 
 def sat_solve(silent, dir="", c=50, out_dir="", header=""):
@@ -339,8 +348,8 @@ def sat_solve(silent, dir="", c=50, out_dir="", header=""):
     if table_rows != [] and not silent:
         print(header+"\n"+"-"*len(header))
         def header_func(i): return "Test " + str(i).zfill(2)
-        print(table.create(header, table_rows, col_titles=[
-              "Metric", "Value"], sep_every=5, new_line=False, sep_func=header_func))
+        print(create_table(header, table_rows, ["Metric", "Value"],
+              sep_every=5, new_line=False, sep_func=header_func))
         print("Average CPU Time: " + str(av_time) + " seconds")
         print("Average Decisions: " + str(av_dec))
         print("Average Decision Rate: " + str(av_d_rate) + " decisions/sec")
@@ -355,8 +364,8 @@ def sat_solve(silent, dir="", c=50, out_dir="", header=""):
             # otherwise make a file in the specified directory
             outfile = open(out_dir + "test_results.md", "w")
 
-        outfile.write(table.create(header,
-            table_rows, ["Metric", "Value"], 5, lambda s: "Test "+str(s).zfill(2)))
+        outfile.write(create_table(header, table_rows, [
+                      "Metric", "Value"], 5, lambda s: "Test "+str(s).zfill(2)))
         if av_time != 0:
             outfile.write("# Averages\n")
             outfile.write("Average CPU Time: " +
@@ -380,24 +389,25 @@ def decode_solutions():
         for i in range(50):
             filename = f"{CACHE_DIR}standard/sat/sudoku_{str(i + 1).zfill(2)}.out"
             # read file and pass to Sud.convert
-            with open(filename, "r") as infile:
-                lines = infile.readlines()
+            with open(filename, "r") as in_file:
+                lines = in_file.readlines()
                 converted = Sud.convert(lines[1])
                 outfile = f"{CACHE_DIR}solutions/standard/sudoku_{str(i + 1).zfill(2)}.txt"
                 with open(outfile, "w") as out:
                     out.write(converted)
+
     if os.path.exists(f"{CACHE_DIR}hard/sat"):
         os.system(f"mkdir -p {CACHE_DIR}solutions/hard")
         for i in range(95):
             filename = f"{CACHE_DIR}hard/sat/sudoku_{str(i + 1).zfill(2)}.out"
             # read file and pass to Sud.convert
-            with open(filename, "r") as infile:
-                lines = infile.readlines()
+            with open(filename, "r") as in_file:
+                lines = in_file.readlines()
                 converted = Sud.convert(lines[1])
                 outfile = f"{CACHE_DIR}solutions/hard/sudoku_{str(i + 1).zfill(2)}.txt"
                 with open(outfile, "w") as out:
                     out.write(converted)
-            
+
 
 if __name__ == "__main__":
     main()
