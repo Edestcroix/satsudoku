@@ -9,14 +9,15 @@ from src.convertCNF import SudokuToCNF, Encoding
 
 
 TEST_DIR = "benchmarks/"
-WORKING_DIR = TEST_DIR + "working/"
+CACHE_DIR = ".working/"
 PUZZLE_DIR = "data/puzzles/"
+RESULTS_DIR = TEST_DIR
 
 
 def main():
 
-    if not os.path.isdir(WORKING_DIR):
-        os.mkdir(WORKING_DIR)
+    if not os.path.isdir(CACHE_DIR):
+        os.mkdir(CACHE_DIR)
 
     # set up argument parser
     # with argument flag -c
@@ -34,7 +35,9 @@ def main():
     parser.add_argument("-a", "--all", action="store_true",
                         help="run all tests")
     parser.add_argument("-k", "--keep", action="store_true",
-                        help="keep working directory")
+                        help="keep converted CNF files and solver output")
+    parser.add_argument("-S", "--summarize", action="store_true",
+                        help="summarize results from -a")
     args = parser.parse_args()
 
     # fail -s specified without -o
@@ -42,72 +45,12 @@ def main():
         print("Error: -s must be used with -o or -a")
         return
 
+    if args.summarize and not args.all:
+        print("Error: -S must be used with -a")
+        return
+
     if args.all:
-
-        # fail if any flags other than -o and -s are specified
-        if args.test != "" or args.enc != "":
-            print("Error: -a cannot be used with flags other than -o and -s")
-            return
-
-        if not os.path.isdir(TEST_DIR + "summary/"):
-            os.mkdir(TEST_DIR + "summary/")
-
-        if args.out == "":
-            out = TEST_DIR + "summary/"
-        else:
-            out = args.out
-            # fail if out is specified but not a directory
-            if os.path.exists(out) and not os.path.isdir(out):
-                print("Error: -o must be a directory when using -a")
-                return
-            elif not os.path.exists(out):
-                os.mkdir(out)
-
-        # add / if not present
-        if out != "" and out[-1] != "/":
-            out += "/"
-
-        msg = "Testing {0} puzzles with {1} encoding"
-
-        def time(f): return "Time taken: " + \
-            str(round(Timer(f).timeit(number=1), 4)) + "s"
-
-        if not args.silent:
-            print("Running all tests, outputting to " + out)
-            print("This may take a while...")
-            print(format(msg.format("easy", "minimal")))
-            print(time(lambda: test_easy(
-                True, Encoding.MINIMAL, out+"01-easy-min.txt")))
-
-            print(format(msg.format("easy", "efficient")))
-            print(time(lambda: test_easy(
-                True, Encoding.EFFICIENT, out+"02-easy-eff.txt")))
-
-            print(format(msg.format("easy", "extended")))
-            print(time(lambda: test_easy(
-                True, Encoding.EXTENDED, out+"03-easy-ext.txt")))
-
-            print(format(msg.format("hard", "minimal")))
-            print(time(lambda: test_hard(
-                True, Encoding.MINIMAL, out+"04-hard-min.txt")))
-
-            print(format(msg.format("hard", "efficient")))
-            print(time(lambda: test_hard(
-                True, Encoding.EFFICIENT, out+"05-hard-eff.txt")))
-
-            print(format(msg.format("hard", "extended")))
-            print(time(lambda: test_hard(
-                True, Encoding.EXTENDED, out+"06-hard-ext.txt")))
-
-            print("Done!")
-        else:
-            test_easy(True, Encoding.MINIMAL, out+"01-easy-min.txt")
-            test_easy(True, Encoding.EFFICIENT, out+"02-easy-eff.txt")
-            test_easy(True, Encoding.EXTENDED, out+"03-easy-ext.txt")
-            test_hard(True, Encoding.MINIMAL, out+"04-hard-min.txt")
-            test_hard(True, Encoding.EFFICIENT, out+"05-hard-eff.txt")
-            test_hard(True, Encoding.EXTENDED, out+"06-hard-ext.txt")
-
+        run_all_tests(args)
     else:
         match args.enc:
             case "eff": enc = Encoding.EFFICIENT
@@ -116,6 +59,7 @@ def main():
             case "extended": enc = Encoding.EXTENDED
             case "min": enc = Encoding.MINIMAL
             case "minimal": enc = Encoding.MINIMAL
+            case "": enc = Encoding.MINIMAL
             case _:
                 print("Error: invalid encoding")
                 exit(1)
@@ -124,9 +68,120 @@ def main():
             case "hard": test_hard(args.silent, enc, args.out)
             case _: test_easy(args.silent, enc, args.out)
 
-    if not args.keep:
-        shutil.rmtree(WORKING_DIR)
+    if args.keep:
+        # move contents cache dir to results dir
+        out_dir = RESULTS_DIR if args.out == "" else args.out
+        if not os.path.isdir(out_dir):
+            os.mkdir(out_dir)
+        if os.path.isdir(out_dir + ".working"):
+            shutil.rmtree(out_dir + ".working")
+        shutil.move(CACHE_DIR, out_dir)
+        if os.path.isdir(out_dir + "encodings"):
+            shutil.rmtree(out_dir + "encodings")
+        os.rename(out_dir + ".working", out_dir + "encodings")
 
+        if not args.silent:
+            print("Converted CNF files and solver output saved to " +
+                  out_dir+"encodings")
+
+    else:
+        shutil.rmtree(CACHE_DIR)
+
+    if args.summarize:
+        summarize_results(args.out)
+
+
+def summarize_results(out_dir=""):
+    # for every file in results dir
+    # get the last line
+    sum_file = RESULTS_DIR + "summary.txt" if out_dir == "" else out_dir + "/summary.txt"
+    table_rows = []
+    for file in os.listdir(RESULTS_DIR):
+        if file.endswith(".txt") and file != "summary.txt":
+            with open(RESULTS_DIR + file, "r") as f:
+                lines = f.readlines()
+                # format first line to remove first 10 chars and last char
+                # and add spaces to the end to make it 40 chars long
+                first_line = lines[0][10:-1]
+                first_line += " "*(20-len(first_line))
+                # remove (, and ) from first line
+                first_line = first_line.replace("(", "").replace(")", "")
+                first_line = first_line.replace(" Encoding", "")
+
+                mem_line = lines[-1].replace(" MB", "").strip()
+                time_line = lines[-3].replace(" seconds", "").strip()
+                table_rows.append((first_line, time_line, mem_line))
+
+    with open(sum_file, "w") as s:
+        def header_func(x): return "Easy Tests" if x == 1 else "Hard Tests"
+        s.write(table_format(table_rows, sep_func=header_func,
+                new_line=False, col_titles=["Encoding", "Time (seconds)", "Memory (MB)"]))
+    print("Results summarized to " + sum_file)
+
+
+def run_all_tests(args):
+    # fail if any flags other than -o and -s are specified
+    if args.test != "" or args.enc != "":
+        print("Error: -a cannot be used with flags other than -o and -s")
+        return
+
+    if not os.path.isdir(RESULTS_DIR):
+        os.mkdir(RESULTS_DIR)
+
+    if args.out == "":
+        out = RESULTS_DIR
+    else:
+        out = args.out
+        # fail if out is specified but not a directory
+        if os.path.exists(out) and not os.path.isdir(out):
+            print("Error: -o must be a directory when using -a")
+            return
+        elif not os.path.exists(out):
+            os.mkdir(out)
+
+    # add / if not present
+    if out != "" and out[-1] != "/":
+        out += "/"
+
+    def time(f): return "Time taken: " + \
+        str(round(Timer(f).timeit(number=1), 4)) + "s"
+
+    if not args.silent:
+        msg = "Testing {0} puzzles with {1} encoding..."
+        print("Running all tests, outputting to " + out)
+        print("This may take a while...")
+        print(format(msg.format("easy", "minimal")))
+        print(time(lambda: test_easy(
+            True, Encoding.MINIMAL, out+"01-easy-min.txt")))
+
+        print(format(msg.format("easy", "efficient")))
+        print(time(lambda: test_easy(
+            True, Encoding.EFFICIENT, out+"02-easy-eff.txt")))
+
+        print(format(msg.format("easy", "extended")))
+        print(time(lambda: test_easy(
+            True, Encoding.EXTENDED, out+"03-easy-ext.txt")))
+
+        print(format(msg.format("hard", "minimal")))
+        print(time(lambda: test_hard(
+            True, Encoding.MINIMAL, out+"04-hard-min.txt")))
+
+        print(format(msg.format("hard", "efficient")))
+        print(time(lambda: test_hard(
+            True, Encoding.EFFICIENT, out+"05-hard-eff.txt")))
+
+        print(format(msg.format("hard", "extended")))
+        print(time(lambda: test_hard(
+            True, Encoding.EXTENDED, out+"06-hard-ext.txt")))
+
+        print("Done!")
+    else:
+        test_easy(True, Encoding.MINIMAL, out+"01-easy-min.txt")
+        test_easy(True, Encoding.EFFICIENT, out+"02-easy-eff.txt")
+        test_easy(True, Encoding.EXTENDED, out+"03-easy-ext.txt")
+        test_hard(True, Encoding.MINIMAL, out+"04-hard-min.txt")
+        test_hard(True, Encoding.EFFICIENT, out+"05-hard-eff.txt")
+        test_hard(True, Encoding.EXTENDED, out+"06-hard-ext.txt")
 
 
 def header(test="Easy", enc=Encoding.MINIMAL):
@@ -157,11 +212,11 @@ def test_easy(silent=False, enc=Encoding.MINIMAL, out_dir=""):
         # convert to CNF
         cnf = SudokuToCNF().convert(puzzle, enc)
         # write to file
-        mkdir = "mkdir -p " + WORKING_DIR+"easy/cnf"
+        mkdir = "mkdir -p " + CACHE_DIR+"easy/cnf"
         os.system(mkdir)
 
         # pad number in filename with zero for single digits
-        filename = WORKING_DIR+"easy/cnf/p096_sudoku_" + \
+        filename = CACHE_DIR+"easy/cnf/p096_sudoku_" + \
             str(i+1).zfill(2) + ".cnf"
 
         outfile = open(filename, "w")
@@ -169,7 +224,7 @@ def test_easy(silent=False, enc=Encoding.MINIMAL, out_dir=""):
         outfile.close()
 
     # call sat_solve
-    sat_solve(silent, WORKING_DIR+"easy/", 50, out_dir, header("Easy", enc))
+    sat_solve(silent, CACHE_DIR+"easy/", 50, out_dir, header("Easy", enc))
 
 
 def test_hard(silent=False, enc=Encoding.MINIMAL, out_dir=""):
@@ -184,69 +239,128 @@ def test_hard(silent=False, enc=Encoding.MINIMAL, out_dir=""):
         # convert to CNF
         cnf = SudokuToCNF().convert(puzzle, enc)
         # write to file
-        mkdir = "mkdir -p " + WORKING_DIR+"hard/cnf"
+        mkdir = "mkdir -p " + CACHE_DIR+"hard/cnf"
         os.system(mkdir)
 
         # pad number in filename with zero for single digits
-        filename = WORKING_DIR+"hard/cnf/p096_sudoku_" + \
+        filename = CACHE_DIR+"hard/cnf/p096_sudoku_" + \
             str(i+1).zfill(2) + ".cnf"
 
         outfile = open(filename, "w")
         outfile.write(cnf)
         outfile.close()
 
-    sat_solve(silent, WORKING_DIR+"hard/", 95, out_dir, header("Hard", enc))
+    sat_solve(silent, CACHE_DIR+"hard/", 95, out_dir, header("Hard", enc))
 
 
 def sat_solve(silent, dir="", c=50, out_dir="", header=""):
     # iterate through CNF output and call minisat on each
     if not silent:
         print(header)
-    os.system("mkdir -p " + dir)
+    os.system("mkdir -p " + dir+"sol")
     times = []
+    mems = []
     to_out = ""
+    table_rows = []
     for i in range(c):
         filename = dir+"cnf/p096_sudoku_" + str(i+1).zfill(2) + ".cnf"
         outfile = dir + "sol/p096_sudoku_" + str(i+1).zfill(2) + ".out"
-        mkdir = "mkdir -p " + dir + "sol" + " " + dir + "stat"
-        os.system(mkdir)
-        # minisat command called as minisat <filename> <filename>.out | grep "CPU time" > <filename>.stat
-        command = "minisat " + filename + " " + \
-            outfile
+        minisat = "minisat " + filename + " " + outfile
+
         # intercept stdout, don't let it print to terminal
         output = subprocess.Popen(
-            command, shell=True, stdout=subprocess.PIPE).communicate()[0]
+            minisat, shell=True, stdout=subprocess.PIPE).communicate()[0]
         output = output.decode("utf-8").split("\n")
-        # get the CPU time from the output
-        for line in output:
-            if "Memory used" in line:
-                to_out += "---Test " + str(i+1).zfill(2) + "-"*24 + "\n"
-                to_out += line + "\n"
-            if "CPU time" in line:
-                to_out += line + "\n"
-                times.append(re.findall(r"[-+]?\d*\.\d+|\d+", line))
 
-    if times != []:
-        to_out += "---Average CPU time"+"-"*24 + "\n"
-        to_out += str(round(sum([float(x[0])
-                      for x in times])/len(times), 4)) + " seconds"
+        def want_line(l): return "CPU time" in l or "Memory used" in l
+        data = [line for line in output if want_line(line)]
+        mem = data[0].split(":")
+        cpu = data[1].split(":")
+        table_rows.append((mem[0].strip(), mem[1].strip()))
+        table_rows.append((cpu[0].strip(), cpu[1].strip()))
 
-    if to_out != "":
-        if not silent:
-            print(to_out)
+        mems.append(re.findall(r"[-+]?\d*\.\d+|\d+", data[0]))
+        times.append(re.findall(r"[-+]?\d*\.\d+|\d+", data[1]))
+
+    average_time = round(sum([float(x[0]) for x in times])/len(times), 4) if times != [] else 0
+    average_mem = round(sum([float(x[0]) for x in mems])/len(mems), 4) if mems != [] else 0
+
+    if table_rows != [] and not silent:
+        print(header+"\n"+"-"*len(header))
+        def header_func(i): return "Test " + str(i).zfill(2)
+        print(table_format(table_rows, 2, col_titles=[
+              "Metric", "Value"], new_line=False, sep_func=header_func))
+        print("Average CPU Time: \n" + str(average_time) + " seconds")
+        print("Average Memory Used: \n" + str(average_mem) + " MB")
+    elif table_rows != []:
+        # check if a file was specified
+        if out_dir[-4:] == ".txt":
+            # if there is a file specified, write to that file
+            outfile = open(out_dir, "w")
         else:
-            # check if a file was specified
-            to_out = header + "\n" + to_out
-            if out_dir[-4:] == ".txt":
-                # write to file
-                outfile = open(out_dir, "w")
-                outfile.write(to_out)
-                outfile.close()
-            else:
-                # write to file
-                outfile = open(out_dir + "test_results.txt", "w")
-                outfile.write(to_out)
-                outfile.close()
+            # otherwise make a file in the specified directory
+            outfile = open(out_dir + "test_results.txt", "w")
+
+        if header != "":
+            outfile.write(header + "\n")
+        outfile.write(table_format(
+            table_rows, 2, sep_func=lambda s: "Test "+str(s).zfill(2), col_titles=["Metric", "Value"]))
+        if average_time != 0:
+            outfile.write("Average CPU Time: \n" +
+                          str(average_time) + " seconds\n")
+            outfile.write("Average Memory Used: \n" +
+                            str(average_mem) + " MB")
+        outfile.close()
+
+
+# yes, this function is an almost unreadable mess. Will I fix it? Probably not.
+# It works, and no one else will ever have to read it, so I don't care.
+def table_format(rows, sep_every=3, col_titles=[], sep_func=None, new_line=True):
+    # find the longest string in each column
+    col_widths = [max(len(str(x)) for x in col)
+                  for col in zip(*rows + [col_titles])]
+    out = ""
+    sep_count = 0
+    sep_line = "+-" + "-+-".join("-" * n for n in col_widths) + "-+" + "\n"
+    for i, row in enumerate(rows):
+        if i % sep_every == 0:
+            sep_count += 1
+            # when a separator of some kind is defined
+            # (either a header or a function)
+            # print the separator at the interval specified by sep_every
+            if sep_func != None:
+
+                # don't need a sep_line for the first one
+                if sep_count != 1:
+                    out += sep_line
+
+                # the header is generated by the function
+                # passed as an argument to sep_func
+                # (this is so that the header can be dynamic)
+                head = sep_func(sep_count)
+
+                out += head.ljust(sum(col_widths) + 3 *
+                                  (len(col_widths)-1)) + "\n"
+
+                out += sep_line
+
+            if col_titles != []:
+                # if there are no column titles, and no separator function
+                # a separator line needs to be printed
+                if sep_func == None:
+                    out += sep_line
+
+                out += "| " + " | ".join((str(x).ljust(col_widths[j])
+                                          for j, x in enumerate(col_titles))) + " |\n"
+                out += "+-" + "-+-".join("-" * n for n in col_widths) + "-+\n"
+
+        out += "| " + " | ".join((str(x).ljust(col_widths[j])
+                                  for j, x in enumerate(row))) + " |\n"
+
+    out += sep_line[:-1]
+    if new_line:
+        out += "\n"
+    return out
 
 
 if __name__ == "__main__":
