@@ -1,11 +1,13 @@
 #! /usr/bin/env python3
+import argparse
 import os
+import re
 import shutil
 import subprocess
-import argparse
-import re
-from timeit import Timer
-from src.convertCNF import SudokuToCNF, Encoding
+
+from src.convertCNF import Encoding
+import src.convertCNF as Cnf
+import src.tableMD as table
 
 
 TEST_DIR = "benchmarks/"
@@ -54,7 +56,7 @@ def main():
     args = parser.parse_args()
 
     # fail -s specified without -o
-    if args.silent and not (args.out != "" or args.all):
+    if args.silent and args.out == "" and not args.all:
         print("Error: -s must be used with -o or -a")
         return
 
@@ -82,64 +84,26 @@ def main():
             case _: test_easy(args.silent, enc, args.out)
 
     if args.keep:
-        # move contents cache dir to results dir
-        out_dir = RESULTS_DIR if args.out == "" else args.out
-        if not os.path.isdir(out_dir):
-            os.mkdir(out_dir)
-        if os.path.isdir(out_dir + ".working"):
-            shutil.rmtree(out_dir + ".working")
-        shutil.move(CACHE_DIR, out_dir)
-        if os.path.isdir(out_dir + "encodings"):
-            shutil.rmtree(out_dir + "encodings")
-        os.rename(out_dir + ".working", out_dir + "encodings")
-
-        if not args.silent:
-            print("Converted CNF files and solver output saved to " +
-                  out_dir+"encodings")
-
+        copy_working_dir(args)
     else:
         shutil.rmtree(CACHE_DIR)
 
-    if args.summarize:
-        summarize_results(args.out)
 
+def copy_working_dir(args):
+    # move contents cache dir to results dir
+    out_dir = RESULTS_DIR if args.out == "" else args.out
+    if not os.path.isdir(out_dir):
+        os.mkdir(out_dir)
+    if os.path.isdir(f"{out_dir}.working"):
+        shutil.rmtree(f"{out_dir}.working")
+    shutil.move(CACHE_DIR, out_dir)
+    if os.path.isdir(f"{out_dir}encodings"):
+        shutil.rmtree(f"{out_dir}encodings")
+    os.rename(f"{out_dir}.working", f"{out_dir}encodings")
 
-def summarize_results(out_dir=""):
-    # for every file in results dir
-    # get the last line
-    sum_file = RESULTS_DIR + "summary.md" if out_dir == "" else out_dir + "/summary.md"
-    table_rows = []
-    for file in os.listdir(RESULTS_DIR):
-        if file.endswith(".md") and file != "summary.md":
-            with open(RESULTS_DIR + file, "r") as f:
-                lines = f.readlines()
-                # format first line to remove first 10 chars and last char
-                # and add spaces to the end to make it 40 chars long
-                first_line = lines[0][10:-1]
-                first_line += " "*(20-len(first_line))
-                # remove (, and ) from first line
-                first_line = first_line.replace("(", "").replace(")", "")
-                first_line = first_line.replace(" Encoding", "")
-
-                # get the float or int for time, prop, and rate
-                dcsn = re.findall(r"(\d+(?:\.\d+)?)", lines[DECISIONS])[0]
-                dcsn_rate = re.findall(
-                    r"(\d+(?:\.\d+)?) decisions/sec", lines[DECISION_RATE])[0]
-                prop = re.findall(r"(\d+(?:\.\d+)?)", lines[PROPOSITIONS])[0]
-                rate = re.findall(r"(\d+(?:\.\d+)?) props/sec",
-                                  lines[PROPOSITION_RATE])[0]
-                time = re.findall(r"(\d+(?:\.\d+)?) seconds", lines[TIME])[0]
-                table_rows.append(
-                    (first_line, dcsn, dcsn_rate, prop, rate, time))
-
-    with open(sum_file, "w") as s:
-        def header_func(
-            x): return "Averages ― Easy Puzzles" if x == 1 else "Averages ― Hard Puzzles"
-        cols = ["Encoding", "Decisions", "Decision Rate (dcsns/sec)",
-                "Propositions", "Proposition Rate (props/sec)", "Time (seconds)"]
-        s.write(Table().create(table_rows, cols, sep_func=header_func,
-                new_line=False))
-    print("Results summarized to " + sum_file)
+    if not args.silent:
+        print("Converted CNF files and solver output saved to " +
+              out_dir+"encodings")
 
 
 def run_all_tests(args):
@@ -166,45 +130,66 @@ def run_all_tests(args):
     if out != "" and out[-1] != "/":
         out += "/"
 
-    def time(f): return "Time taken: " + \
-        str(round(Timer(f).timeit(number=1), 4)) + "s"
-
     if not args.silent:
-        msg = "Testing {0} puzzles with {1} encoding..."
-        print("Running all tests, outputting to " + out)
-        print("This may take a while...")
-        print(format(msg.format("easy", "minimal")))
-        print(time(lambda: test_easy(
-            True, Encoding.MINIMAL, out+"01-easy-min.md")))
-
-        print(format(msg.format("easy", "efficient")))
-        print(time(lambda: test_easy(
-            True, Encoding.EFFICIENT, out+"02-easy-eff.md")))
-
-        print(format(msg.format("easy", "extended")))
-        print(time(lambda: test_easy(
-            True, Encoding.EXTENDED, out+"03-easy-ext.md")))
-
-        print(format(msg.format("hard", "minimal")))
-        print(time(lambda: test_hard(
-            True, Encoding.MINIMAL, out+"04-hard-min.md")))
-
-        print(format(msg.format("hard", "efficient")))
-        print(time(lambda: test_hard(
-            True, Encoding.EFFICIENT, out+"05-hard-eff.md")))
-
-        print(format(msg.format("hard", "extended")))
-        print(time(lambda: test_hard(
-            True, Encoding.EXTENDED, out+"06-hard-ext.md")))
-
-        print("Done!")
+        test_all(out, args.summarize)
     else:
-        test_easy(True, Encoding.MINIMAL, out+"01-easy-min.md")
-        test_easy(True, Encoding.EFFICIENT, out+"02-easy-eff.md")
-        test_easy(True, Encoding.EXTENDED, out+"03-easy-ext.md")
-        test_hard(True, Encoding.MINIMAL, out+"04-hard-min.md")
-        test_hard(True, Encoding.EFFICIENT, out+"05-hard-eff.md")
-        test_hard(True, Encoding.EXTENDED, out+"06-hard-ext.md")
+        test_all_silent(out, args.summarize)
+
+
+def summarize(out, results):
+
+    sum_file = (
+        f"{RESULTS_DIR}summary.md" if out == "" else f"{out}/summary.md")
+    def header_func(x): return "Averages ― Easy Puzzles" if\
+                        x == 1 else "Averages ― Hard Puzzles"
+    cols = ["Encoding", "Decisions", "Decision Rate (dcsns/sec)",
+            "Propositions", "Proposition Rate (props/sec)", "Time (seconds)"]
+    with open(sum_file, "w") as f:
+        f.write(table.create("Results Summary", results, cols, sep_func=header_func, new_line=False))
+
+
+# TODO Rename this here and in `run_all_tests`
+def test_all_silent(out, summary=False):
+    results = [test_easy(True, Encoding.MINIMAL, f"{out}01-easy-min.md")]
+    results.append(test_easy(True, Encoding.EFFICIENT, f"{out}02-easy-eff.md"))
+    results.append(test_easy(True, Encoding.EXTENDED, f"{out}03-easy-ext.md"))
+    results.append(test_hard(True, Encoding.MINIMAL, f"{out}04-hard-min.md"))
+    results.append(test_hard(True, Encoding.EFFICIENT, f"{out}05-hard-eff.md"))
+    results.append(test_hard(True, Encoding.EXTENDED, f"{out}06-hard-ext.md"))
+
+    if summary:
+        summarize(out, results)
+    return results
+
+
+# TODO Rename this here and in `run_all_tests`
+def test_all(out, summary=False):
+    msg = "Testing {0} puzzles with {1} encoding..."
+    print(f"Running all tests, outputting to {out}")
+    print("This may take a while...")
+
+    print(format(msg.format("easy", "minimal")))
+    results = [test_easy(True, Encoding.MINIMAL, f"{out}01-easy-min.md")]
+
+    print(format(msg.format("easy", "efficient")))
+    results.append(test_easy(True, Encoding.EFFICIENT, f"{out}02-easy-eff.md"))
+
+    print(format(msg.format("easy", "extended")))
+    results.append(test_easy(True, Encoding.EXTENDED, f"{out}03-easy-ext.md"))
+
+    print(format(msg.format("hard", "minimal")))
+    results.append(test_hard(True, Encoding.MINIMAL, f"{out}04-hard-min.md"))
+
+    print(format(msg.format("hard", "efficient")))
+    results.append(test_hard(True, Encoding.EFFICIENT, f"{out}05-hard-eff.md"))
+
+    print(format(msg.format("hard", "extended")))
+    results.append(test_hard(True, Encoding.EXTENDED, f"{out}06-hard-ext.md"))
+
+    if summary:
+        summarize(out, results)
+
+    print("Done!")
 
 
 def header(test="Easy", enc=Encoding.MINIMAL):
@@ -212,12 +197,12 @@ def header(test="Easy", enc=Encoding.MINIMAL):
         case Encoding.EFFICIENT: enc = "Efficient"
         case Encoding.EXTENDED: enc = "Extended"
         case _: enc = "Minimal"
-    return test + " Test (" + enc + " Encoding)"
+    return f"{test} Test ({enc} Encoding)"
 
 
 def test_easy(silent=False, enc=Encoding.MINIMAL, out_dir=""):
     # read /puzzles/p096_sudoku.txt
-    filename = PUZZLE_DIR+"p096_sudoku.txt"
+    filename = f"{PUZZLE_DIR}p096_sudoku.txt"
     file = open(filename, "r")
     # each puzzle is 9 lines long
     # headed by "Grid xx"
@@ -225,55 +210,51 @@ def test_easy(silent=False, enc=Encoding.MINIMAL, out_dir=""):
     # the first puzzle is 1
     # the last puzzle is 50
 
+    mkdir = f"mkdir -p {CACHE_DIR}/easy/cnf"
+    os.system(mkdir)
     for i in range(50):
         # read the header
         file.readline()
-        # read the puzzle
-        puzzle = ""
-        for _ in range(9):
-            puzzle += file.readline()
+        puzzle = "".join(file.readline() for _ in range(9))
         # convert to CNF
-        cnf = SudokuToCNF().convert(puzzle, enc)
+        cnf = Cnf.convert(puzzle, enc)
         # write to file
-        mkdir = "mkdir -p " + CACHE_DIR+"easy/cnf"
-        os.system(mkdir)
 
         # pad number in filename with zero for single digits
-        filename = CACHE_DIR+"easy/cnf/sudoku_" + \
-            str(i+1).zfill(2) + ".cnf"
+        filename = f"{CACHE_DIR}easy/cnf/sudoku_{str(i+1).zfill(2)}.cnf"
 
-        outfile = open(filename, "w")
-        outfile.write(cnf)
-        outfile.close()
+        with open(filename, "w") as f:
+            f.write(cnf)
 
     # call sat_solve
-    sat_solve(silent, CACHE_DIR+"easy/", 50, out_dir, header("Easy", enc))
+    head = header("Easy", enc)
+    name = enc.name.lower().capitalize()
+    return [name] + sat_solve(silent, f"{CACHE_DIR}easy/", 50, out_dir, head)
 
 
 def test_hard(silent=False, enc=Encoding.MINIMAL, out_dir=""):
     # read /puzzles/p096_sudoku.txt
-    filename = PUZZLE_DIR+"top95"
-    file = open(filename, "r")
-    # each puzzle is one line, there are 95 puzzles
+    filename = f"{PUZZLE_DIR}top95"
+    with open(filename, "r") as infile:
+        # each puzzle is one line, there are 95 puzzles
 
-    for i in range(95):
-        # read the puzzle
-        puzzle = file.readline()
-        # convert to CNF
-        cnf = SudokuToCNF().convert(puzzle, enc)
-        # write to file
-        mkdir = "mkdir -p " + CACHE_DIR+"hard/cnf"
-        os.system(mkdir)
+        for i in range(95):
+            # read the puzzle
+            puzzle = infile.readline()
+            # convert to CNF
+            cnf = Cnf.convert(puzzle, enc)
+            # write to file
+            mkdir = f"mkdir -p {CACHE_DIR}hard/cnf"
+            os.system(mkdir)
 
-        # pad number in filename with zero for single digits
-        filename = CACHE_DIR+"hard/cnf/sudoku_" + \
-            str(i+1).zfill(2) + ".cnf"
+            # pad number in filename with zero for single digits
+            filename = f"{CACHE_DIR}hard/cnf/sudoku_{str(i + 1).zfill(2)}.cnf"
 
-        outfile = open(filename, "w")
-        outfile.write(cnf)
-        outfile.close()
+            with open(filename, "w") as outfile:
+                outfile.write(cnf)
 
-    sat_solve(silent, CACHE_DIR+"hard/", 95, out_dir, header("Hard", enc))
+        return [enc.name.lower().capitalize()] +\
+                sat_solve(silent, f"{CACHE_DIR}hard/", 95, out_dir,header("Hard", enc))
 
 
 def sat_solve(silent, dir="", c=50, out_dir="", header=""):
@@ -324,7 +305,7 @@ def sat_solve(silent, dir="", c=50, out_dir="", header=""):
     averages = []
     for avg in [props, rates, decisions, d_rates]:
         avg = [float(x) for x in avg]
-        averages. append(round(sum(avg) / len(avg), ROUND_AVG))
+        averages.append(round(sum(avg) / len(avg), ROUND_AVG))
 
     av_prop, av_rate, av_dec, av_d_rate = averages
     av_time = round(sum([float(x) for x in times]) / len(times), ROUND_AVG+2)
@@ -332,7 +313,7 @@ def sat_solve(silent, dir="", c=50, out_dir="", header=""):
     if table_rows != [] and not silent:
         print(header+"\n"+"-"*len(header))
         def header_func(i): return "Test " + str(i).zfill(2)
-        print(Table().create(table_rows, col_titles=[
+        print(table.create(header, table_rows, col_titles=[
               "Metric", "Value"], sep_every=5, new_line=False, sep_func=header_func))
         print("Average CPU Time: " + str(av_time) + " seconds")
         print("Average Decisions: " + str(av_dec))
@@ -348,9 +329,7 @@ def sat_solve(silent, dir="", c=50, out_dir="", header=""):
             # otherwise make a file in the specified directory
             outfile = open(out_dir + "test_results.md", "w")
 
-        if header != "":
-            outfile.write(header + "\n")
-        outfile.write(Table().create(
+        outfile.write(table.create(header,
             table_rows, ["Metric", "Value"], 5, lambda s: "Test "+str(s).zfill(2)))
         if av_time != 0:
             outfile.write("# Averages\n")
@@ -364,59 +343,8 @@ def sat_solve(silent, dir="", c=50, out_dir="", header=""):
             outfile.write("Average Propagation Rate: " +
                           str(av_rate) + " props/sec  ")
         outfile.close()
-
-
-class Table:
-    def __table_sep(self, sep_count, sep_func, sep_line, col_widths, col_titles):
-
-        out = ""
-        # when a separator of some kind is defined
-        # (either a header or a function)
-        # print the separator at the interval specified by sep_every
-        if sep_func != None:
-            # the header is generated by the function
-            # passed as an argument to sep_func
-            # (this is so that the header can be dynamic)
-            head = sep_func(sep_count)
-
-            sep_header = "# " + head.ljust(sum(col_widths) + 3 *
-                                           (len(col_widths)-1)) + "\n\n"
-            if sep_count > 1:
-                out += "\n"+sep_header
-            else:
-                out += sep_header
-
-        # if there are no column titles, and no separator function
-        # a separator line needs to be printed
-        if sep_func == None:
-            out += sep_line
-
-        out += "| " + " | ".join((str(x).ljust(col_widths[j])
-                                  for j, x in enumerate(col_titles))) + " |\n"
-        out += sep_line
-        return out
-
-    def create(self, rows, col_titles, sep_every=3, sep_func=None, new_line=True):
-        # find the longest string in each column
-        col_widths = [max(len(str(x)) for x in col)
-                      for col in zip(*rows + [col_titles])]
-        out = ""
-        sep_count = 0
-        sep_line = "|-" + "-|-".join("-" * n for n in col_widths) + "-|" + "\n"
-
-        for i, row in enumerate(rows):
-            if i % sep_every == 0:
-                sep_count += 1
-                out += self.__table_sep(sep_count, sep_func,
-                                        sep_line, col_widths, col_titles)
-
-            out += "| " + " | ".join((str(x).ljust(col_widths[j])
-                                      for j, x in enumerate(row))) + " |\n"
-
-        if new_line:
-            out += "\n"
-        return out
-
+    averages = [av_time] + averages
+    return (averages)
 
 if __name__ == "__main__":
     main()
