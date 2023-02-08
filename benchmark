@@ -169,7 +169,7 @@ def summarize(out, results):
     def header_func(x): return "Averages ― Standard Puzzles" if\
         x == 1 else "Averages ― Hard Puzzles"
     cols = ["Encoding", "Decisions", "Decision Rate (dcsns/sec)",
-            "Propositions", "Proposition Rate (props/sec)", "Time (seconds)"]
+            "Propositions", "Proposition Rate (props/sec)", "CPU Time (seconds)"]
     with open(sum_file, "w") as f:
         f.write(create_table("Results Summary", results,
                 cols, sep_func=header_func, new_line=False))
@@ -378,7 +378,7 @@ def sat_solve(silent, dir="", c=50, out_dir="", header=""):
             outfile.write("Average Propagation Rate: " +
                           str(av_rate) + " props/sec  ")
         outfile.close()
-    averages = [av_time] + averages
+    averages.append(av_time)
     return (averages)
 
 
