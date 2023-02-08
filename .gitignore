@@ -1,5 +1,5 @@
 .vscode/
 src/__pycache__/
 test/
-test_results/
+benchmarks/
 test*
