@@ -1,5 +1,6 @@
 #! /usr/bin/env python3
 import os
+import shutil
 import subprocess
 import argparse
 import re
@@ -7,11 +8,15 @@ from timeit import Timer
 from src.convertCNF import SudokuToCNF, Encoding
 
 
-TEST_DIR = "test_results/"
+TEST_DIR = "benchmarks/"
+WORKING_DIR = TEST_DIR + "working/"
 PUZZLE_DIR = "data/puzzles/"
 
 
 def main():
+
+    if not os.path.isdir(WORKING_DIR):
+        os.mkdir(WORKING_DIR)
 
     # set up argument parser
     # with argument flag -c
@@ -22,63 +27,106 @@ def main():
     # default is to run all tests
     parser.add_argument("-t", "--test", type=str, default="",
                         help="test to run (easy, hard)")
-    parser.add_argument("-e", "--enc", type=str, default="min",
+    parser.add_argument("-e", "--enc", type=str, default="",
                         help="encoding to use (min, eff, ext)")
     parser.add_argument("-o", "--out", type=str,
                         default="", help="output directory")
     parser.add_argument("-a", "--all", action="store_true",
                         help="run all tests")
+    parser.add_argument("-k", "--keep", action="store_true",
+                        help="keep working directory")
     args = parser.parse_args()
 
+    # fail -s specified without -o
+    if args.silent and not (args.out != "" or args.all):
+        print("Error: -s must be used with -o or -a")
+        return
+
     if args.all:
+
+        # fail if any flags other than -o and -s are specified
+        if args.test != "" or args.enc != "":
+            print("Error: -a cannot be used with flags other than -o and -s")
+            return
+
+        if not os.path.isdir(TEST_DIR + "summary/"):
+            os.mkdir(TEST_DIR + "summary/")
+
         if args.out == "":
             out = TEST_DIR + "summary/"
         else:
             out = args.out
-            # fail if out is not specified or not a directory
-            if out == "" or not os.path.isdir(out):
+            # fail if out is specified but not a directory
+            if os.path.exists(out) and not os.path.isdir(out):
                 print("Error: -o must be a directory when using -a")
                 return
+            elif not os.path.exists(out):
+                os.mkdir(out)
 
         # add / if not present
         if out != "" and out[-1] != "/":
             out += "/"
-    
+
         msg = "Testing {0} puzzles with {1} encoding"
 
-        print("Running all tests, outputting to " + out)
-        print("This may take a while...")
-        time = lambda f: "Time taken: " + str(round(Timer(f).timeit(number=1), 4)) + "s"
+        def time(f): return "Time taken: " + \
+            str(round(Timer(f).timeit(number=1), 4)) + "s"
 
-        print(format(msg.format("easy", "minimal")))
-        print(time(lambda: test_easy(True, Encoding.MINIMAL, out+"01-easy-min.txt")))
-        
-        print(format(msg.format("easy", "efficient")))
-        print(time(lambda: test_easy(True, Encoding.EFFICIENT, out+"02-easy-eff.txt")))
-        
-        print(format(msg.format("easy", "extended")))
-        print(time(lambda: test_easy(True, Encoding.EXTENDED, out+"03-easy-ext.txt")))
+        if not args.silent:
+            print("Running all tests, outputting to " + out)
+            print("This may take a while...")
+            print(format(msg.format("easy", "minimal")))
+            print(time(lambda: test_easy(
+                True, Encoding.MINIMAL, out+"01-easy-min.txt")))
 
+            print(format(msg.format("easy", "efficient")))
+            print(time(lambda: test_easy(
+                True, Encoding.EFFICIENT, out+"02-easy-eff.txt")))
 
-        print(format(msg.format("hard", "minimal")))
-        print(time(lambda: test_hard(True, Encoding.MINIMAL, out+"04-hard-min.txt")))
-        
-        print(format(msg.format("hard", "efficient")))
-        print(time(lambda: test_hard(True, Encoding.EFFICIENT, out+"05-hard-eff.txt")))
-        
-        print(format(msg.format("hard", "extended")))
-        print(time(lambda: test_hard(True, Encoding.EXTENDED, out+"06-hard-ext.txt")))
-        
-        print("Done!")
+            print(format(msg.format("easy", "extended")))
+            print(time(lambda: test_easy(
+                True, Encoding.EXTENDED, out+"03-easy-ext.txt")))
+
+            print(format(msg.format("hard", "minimal")))
+            print(time(lambda: test_hard(
+                True, Encoding.MINIMAL, out+"04-hard-min.txt")))
+
+            print(format(msg.format("hard", "efficient")))
+            print(time(lambda: test_hard(
+                True, Encoding.EFFICIENT, out+"05-hard-eff.txt")))
+
+            print(format(msg.format("hard", "extended")))
+            print(time(lambda: test_hard(
+                True, Encoding.EXTENDED, out+"06-hard-ext.txt")))
+
+            print("Done!")
+        else:
+            test_easy(True, Encoding.MINIMAL, out+"01-easy-min.txt")
+            test_easy(True, Encoding.EFFICIENT, out+"02-easy-eff.txt")
+            test_easy(True, Encoding.EXTENDED, out+"03-easy-ext.txt")
+            test_hard(True, Encoding.MINIMAL, out+"04-hard-min.txt")
+            test_hard(True, Encoding.EFFICIENT, out+"05-hard-eff.txt")
+            test_hard(True, Encoding.EXTENDED, out+"06-hard-ext.txt")
+
     else:
         match args.enc:
             case "eff": enc = Encoding.EFFICIENT
+            case "efficient": enc = Encoding.EFFICIENT
             case "ext": enc = Encoding.EXTENDED
-            case _: enc = Encoding.MINIMAL
+            case "extended": enc = Encoding.EXTENDED
+            case "min": enc = Encoding.MINIMAL
+            case "minimal": enc = Encoding.MINIMAL
+            case _:
+                print("Error: invalid encoding")
+                exit(1)
 
         match args.test:
             case "hard": test_hard(args.silent, enc, args.out)
             case _: test_easy(args.silent, enc, args.out)
+
+    if not args.keep:
+        shutil.rmtree(WORKING_DIR)
+
 
 
 def header(test="Easy", enc=Encoding.MINIMAL):
@@ -109,13 +157,11 @@ def test_easy(silent=False, enc=Encoding.MINIMAL, out_dir=""):
         # convert to CNF
         cnf = SudokuToCNF().convert(puzzle, enc)
         # write to file
-        mkdir = "mkdir -p " + TEST_DIR
-        os.system(mkdir)
-        mkdir = "mkdir -p " + TEST_DIR+"easy/cnf"
+        mkdir = "mkdir -p " + WORKING_DIR+"easy/cnf"
         os.system(mkdir)
 
         # pad number in filename with zero for single digits
-        filename = TEST_DIR+"easy/cnf/p096_sudoku_" + \
+        filename = WORKING_DIR+"easy/cnf/p096_sudoku_" + \
             str(i+1).zfill(2) + ".cnf"
 
         outfile = open(filename, "w")
@@ -123,7 +169,8 @@ def test_easy(silent=False, enc=Encoding.MINIMAL, out_dir=""):
         outfile.close()
 
     # call sat_solve
-    sat_solve(silent, TEST_DIR+"easy/", 50, out_dir, header("Easy", enc) )
+    sat_solve(silent, WORKING_DIR+"easy/", 50, out_dir, header("Easy", enc))
+
 
 def test_hard(silent=False, enc=Encoding.MINIMAL, out_dir=""):
     # read /puzzles/p096_sudoku.txt
@@ -137,24 +184,24 @@ def test_hard(silent=False, enc=Encoding.MINIMAL, out_dir=""):
         # convert to CNF
         cnf = SudokuToCNF().convert(puzzle, enc)
         # write to file
-        mkdir = "mkdir -p " + TEST_DIR
-        os.system(mkdir)
-        mkdir = "mkdir -p " + TEST_DIR+"hard/cnf"
+        mkdir = "mkdir -p " + WORKING_DIR+"hard/cnf"
         os.system(mkdir)
 
         # pad number in filename with zero for single digits
-        filename = TEST_DIR+"hard/cnf/p096_sudoku_" + \
+        filename = WORKING_DIR+"hard/cnf/p096_sudoku_" + \
             str(i+1).zfill(2) + ".cnf"
 
         outfile = open(filename, "w")
         outfile.write(cnf)
         outfile.close()
 
-    sat_solve(silent, TEST_DIR+"hard/", 95, out_dir, header("Hard", enc))
+    sat_solve(silent, WORKING_DIR+"hard/", 95, out_dir, header("Hard", enc))
 
 
 def sat_solve(silent, dir="", c=50, out_dir="", header=""):
     # iterate through CNF output and call minisat on each
+    if not silent:
+        print(header)
     os.system("mkdir -p " + dir)
     times = []
     to_out = ""
@@ -185,7 +232,7 @@ def sat_solve(silent, dir="", c=50, out_dir="", header=""):
                       for x in times])/len(times), 4)) + " seconds"
 
     if to_out != "":
-        if out_dir == "" and not silent:
+        if not silent:
             print(to_out)
         else:
             # check if a file was specified
