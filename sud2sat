@@ -1,28 +1,21 @@
 #!/usr/bin/env python3
 
-import argparse
 import fileinput
+import sys
 
 import src.convertCNF as Cnf
-from src.convertCNF import Encoding
 
 
 def main():
-    sudoku = "".join(fileinput.input())
-    parser = argparse.ArgumentParser(
-        description='Convert a sudoku puzzle to CNF')
-    parser.add_argument('-e', '--encoding', type=str, default='minimal',
-                        help='Encoding to use (minimal, efficient, extended)')
 
-    args = parser.parse_args()
-    encoding = Encoding.MINIMAL
-    match args.encoding:
-        case 'efficient':
-            encoding = Encoding.EFFICIENT
-        case 'extended':
-            encoding = Encoding.EXTENDED
-    # print the CNF to stdout
-    print(Cnf.convert(sudoku, encoding))
+    # get the sudoku from stdin
+    try:
+        sudoku = "".join(list(fileinput.input())[1:])
+    except FileNotFoundError:
+        # get from arguments if no input is given
+        sudoku = " ".join(sys.argv[1:])
+
+    print(Cnf.convert(sudoku))
 
 
 if __name__ == "__main__":
