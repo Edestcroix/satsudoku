@@ -3,3 +3,5 @@ src/__pycache__/
 test/
 benchmarks/
 test*
+puzzle.cnf
+assign.txt
