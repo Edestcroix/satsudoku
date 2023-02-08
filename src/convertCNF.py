@@ -62,7 +62,7 @@ class SudokuToCNF():
         return cell
 
     def __create_cnf(self, sudoku_list: list, count: int, encoding=Encoding.MINIMAL) -> str:
-        filename = "data/sudoku_rules_" + encoding.name.lower()+".txt"
+        filename = "data/sudoku_rules_" + encoding.name.lower()+".cnf"
 
         # if the file doesn't exist, create it
         # and write the sudoku rules to it
