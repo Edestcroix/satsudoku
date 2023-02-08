@@ -1,6 +1,7 @@
 import os
 from typing import Tuple
 from enum import Enum
+import re
 
 
 class Encoding(Enum):
@@ -36,8 +37,8 @@ class SudokuToCNF():
         sudoku_list = []
 
         # strip newlines
-        sudoku = sudoku.replace("\n", "")
-
+        # strip all whitespace, newlines, tabs, etc
+        sudoku = re.sub(r"\s+", "", sudoku)
         separator = self.__getSeparator(sudoku)
 
         for i in range(1, len(sudoku)):
@@ -61,7 +62,7 @@ class SudokuToCNF():
         return cell
 
     def __create_cnf(self, sudoku_list: list, count: int, encoding=Encoding.MINIMAL) -> str:
-        filename = "data/sudoku_rules_" + encoding.name.lower()+".txt" 
+        filename = "data/sudoku_rules_" + encoding.name.lower()+".txt"
 
         # if the file doesn't exist, create it
         # and write the sudoku rules to it
@@ -114,7 +115,6 @@ class SudokuToCNF():
             self.__each_number_at_least_once_row(file)
             self.__each_number_at_least_once_col(file)
             self.__each_number_at_least_once_box(file)
-
 
     def __cell_one_number(self, file):
         for y in range(1, 10):
@@ -179,13 +179,13 @@ class SudokuToCNF():
                 for i in range(1, 10):
                     file.write(str(self.__cell(i, j, k)) + " ")
                 file.write("0\n")
-                
+
     def __each_number_at_least_once_box(self, file):
         for i in range(0, 3):
             for j in range(0, 3):
                 for k in range(1, 10):
                     for x in range(1, 4):
                         for y in range(1, 4):
-                            file.write(str(self.__cell((3*i+x), (3*j+y), k)) + " ")
+                            file.write(
+                                str(self.__cell((3*i+x), (3*j+y), k)) + " ")
                     file.write("0\n")
-    
