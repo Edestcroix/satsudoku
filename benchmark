@@ -396,8 +396,6 @@ class Table:
         out += sep_line
         return out
 
-    # yes, this function is an almost unreadable mess. Will I fix it? Probably not.
-    # It works, and no one else will ever have to read it, so I don't care.
     def create(self, rows, col_titles, sep_every=3, sep_func=None, new_line=True):
         # find the longest string in each column
         col_widths = [max(len(str(x)) for x in col)
