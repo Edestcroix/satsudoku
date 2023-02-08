@@ -7,8 +7,8 @@ converts a sukdou puzzle read from stdin into CNF format and outputs to stdout
 ## sat2sud
 converts the satifiablility output from minisat, read from stdin, into a solved sudoku puzzle
 
-## tester
-runs multiple sudoku puzzles from /data/puzzles.
+## benchmark
+runs multiple sudoku puzzles from /data/puzzles, prints benchmarking data.
 
 ## Dependencies
 python3
