@@ -9,9 +9,9 @@ from src.convertCNF import Encoding
 from src.tableMD import create as create_table
 from src.tableMD import RawTable, Table
 from typing import List, Tuple
-from enum import Enum
 
 TestResult = Tuple[str, str, str, str, str, str]
+Averages = Tuple[str, str, str, str, str]
 
 
 @dataclass
@@ -63,8 +63,8 @@ class SatSolver():
         self.__clear()
         return results
 
-    def __clear(self):
-        self.__table_rows = []
+    def __clear(self) -> None:
+        self.__table_rows: RawTable = []
         for key in self.params:
             self.params[key] = []
 
@@ -84,8 +84,8 @@ class SatSolver():
         cpu = data[2].split(":")
         self.params[self.__TIME].append(cpu[1].strip().replace(" s", ""))
 
-        return [decision.strip(), decision_rate.strip(),
-                prop.strip(), p_rate, cpu[1].strip()]
+        return (decision.strip(), decision_rate.strip(),
+                prop.strip(), p_rate, cpu[1].strip())
 
     def __solvePuzzle(self, i):
         filename = f"{self.__in_dir}/sudoku_{str(i + 1).zfill(2)}.cnf"
@@ -105,29 +105,31 @@ class SatSolver():
 
         self.__table_rows.append(self.__getData(data))
 
-    def __computeAverages(self):
-        def av(x, r): return str(round(sum(float(x) for x in x) / len(x), r))
-        lists = list(self.params.values())
-        times = self.params[self.__TIME]
-        av_time = av(times, c.ROUND_AVG+2)
-        averages = [av(test_results, c.ROUND_AVG)
-                                               for test_results in lists[:-1]] + [av_time]
+    def __computeAverages(self) -> Averages:
+        def av(x: List[str], r: int) -> str: return str(round(sum(float(x)
+                                                                  for x in x) / len(x), r))
+        lists: List[list] = list(self.params.values())
+        times: list = self.params[self.__TIME]
+        av_time: str = av(times, c.ROUND_AVG+2)
+        averages: list = [av(test_results, c.ROUND_AVG)
+                          for test_results in lists[:-1]] + [av_time]
         averages[self.__DECISION_RATE] = f"{averages[self.__DECISION_RATE]} decisions/sec"
         averages[self.__PROP_RATE] = f"{averages[self.__PROP_RATE]} props/sec"
         averages[self.__TIME] = f"{av_time} s"
-        self.__table_rows.append(averages)
+        self.__table_rows.append(tuple(averages))
 
         return tuple(averages)
 
 
 class Tester():
     def __init__(self, test_info: TestData, solver: SatSolver):
-        self.__p = test_info
-        self.solver = solver
+        self.__p: TestData = test_info
+        self.solver: SatSolver = solver
 
     def update_params(self, test_info: TestData):
         self.__p = test_info
-        self.solver.update_testing(test=test_info.test_type, enc=test_info.enc, pc=test_info.num_puzzles)
+        self.solver.update_testing(
+            test=test_info.test_type, enc=test_info.enc, pc=test_info.num_puzzles)
 
     def update_encoding(self, enc: Encoding):
         self.__p.enc = enc
@@ -154,13 +156,6 @@ class Tester():
         self.__outputResults(table_rows, out_dir)
         return (enc.name.lower(), ) + averages
 
-    def __header(self):
-        match self.__p.enc:
-            case Encoding.EFFICIENT: enc = "Efficient"
-            case Encoding.EXTENDED: enc = "Extended"
-            case _: enc = "Minimal"
-        return f"{self.__p.test_type} Test ({self.__p.enc} Encoding)"
-
     def __outputResults(self, table_rows, out_dir):
         # add a header to the table, the number of puzzles
         # is specified by c, which will be the number of result tables.
@@ -172,7 +167,8 @@ class Tester():
         if table_rows != []:
             cols = ("Decisions", "Decision Rate", "Propagations",
                     "Propagation Rate", "CPU Time")
-            table = create_table(self.__header(), table_rows, cols,
+            title = f"{self.__p.test_type} Test ({self.__p.enc.name.capitalize()} Encoding)"
+            table = create_table(title, table_rows, cols,
                                  sep_every=1, new_line=False, sep_func=header_func)
 
             self.__print(table)

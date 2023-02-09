@@ -2,7 +2,7 @@ import itertools
 import os
 import re
 from enum import Enum
-from typing import Tuple
+from typing import IO, TextIO, Tuple
 
 
 class Encoding(Enum):
@@ -103,14 +103,14 @@ def __fixed_cnf(file, encoding=Encoding.MINIMAL):
         __each_number_at_least_once_box(file)
 
 
-def __cell_one_number(file):
+def __cell_one_number(file: TextIO) -> None:
     for y, x in itertools.product(range(1, 10), range(1, 10)):
         for z in range(1, 10):
             file.write(f"{str(__enc(x, y, z))} ")
         file.write("0\n")
 
 
-def __num_once_in_row(file):
+def __num_once_in_row(file: TextIO) -> None:
     for y, z, x in itertools.product(range(1, 10), range(1, 10), range(1, 10)):
         for i in range((x+1), 10):
             file.write(
@@ -119,7 +119,7 @@ def __num_once_in_row(file):
             )
 
 
-def __num_once_in_column(file):
+def __num_once_in_column(file: TextIO) -> None:
     for x, z, y in itertools.product(range(1, 10), range(1, 10), range(1, 10)):
         for i in range((y+1), 10):
             file.write(
@@ -128,7 +128,7 @@ def __num_once_in_column(file):
             )
 
 
-def __num_once_in_box(file):
+def __num_once_in_box(file: TextIO) -> None:
     for z, i, j, x, y in itertools.product(range(1, 10), range(3), range(3), range(1, 4), range(1, 4)):
         for k in range((y+1), 4):
             file.write(
@@ -142,28 +142,28 @@ def __num_once_in_box(file):
                 + " 0\n")
 
 
-def __exactly_one_number(file):
+def __exactly_one_number(file: TextIO) -> None:
     for i, j, k in itertools.product(range(1, 10), range(1, 10), range(1, 10)):
         for l in range((k+1), 10):
             file.write(
                 f"-{str(__enc(i, j, k))} -{str(__enc(i, j, l))}" + " 0\n")
 
 
-def __each_number_at_least_once_row(file):
+def __each_number_at_least_once_row(file: TextIO) -> None:
     for i, k in itertools.product(range(1, 10), range(1, 10)):
         for j in range(1, 10):
             file.write(f"{str(__enc(i, j, k))} ")
         file.write("0\n")
 
 
-def __each_number_at_least_once_col(file):
+def __each_number_at_least_once_col(file: TextIO) -> None:
     for j, k in itertools.product(range(1, 10), range(1, 10)):
         for i in range(1, 10):
             file.write(f"{str(__enc(i, j, k))} ")
         file.write("0\n")
 
 
-def __each_number_at_least_once_box(file):
+def __each_number_at_least_once_box(file: TextIO) -> None:
     for i, j, k in itertools.product(range(3), range(3), range(1, 10)):
         for x, y in itertools.product(range(1, 4), range(1, 4)):
             file.write(f"{str(__enc(3 * i + x, 3 * j + y, k))} ")
