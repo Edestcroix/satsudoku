@@ -10,8 +10,8 @@ import src.convertSUD as Sud
 from src.tableMD import create as create_table
 from src.convertCNF import Encoding
 
-CACHE_DIR = ".working/"
-PUZZLE_DIR = "data/puzzles/"
+CACHE_DIR = ".working"
+PUZZLE_DIR = "data/puzzles"
 RESULTS_DIR = "benchmarks/"
 
 ROUND_AVG = 2
@@ -30,27 +30,7 @@ def main():
     # which shows the CPU time for each puzzle
     parser = argparse.ArgumentParser(
         description="Run tests on the sudoku solver")
-    parser.add_argument("-s", "--silent", action="store_true",)
-    # add argument flag -t to specify which test to run
-    # default is to run all tests
-    parser.add_argument("-t", "--test", type=str, default="",
-                        help="test to run (standard, hard)")
-    parser.add_argument("-e", "--enc", type=str, default="",
-                        help="encoding to use (min, eff, ext)")
-
-    parser.add_argument("-a", "--all", action="store_true",
-                        help="run all tests")
-    parser.add_argument("-k", "--keep", action="store_true",
-                        help="keep converted CNF files and solver output")
-    parser.add_argument("-S", "--summarize", action="store_true",
-                        help="summarize results from -a")
-    parser.add_argument("-d", "--decode", action="store_true",
-                        help="decode solved puzzles")
-    parser.add_argument("-C", "--complete", action="store_true",
-                        help="run all tests and summarize results")
-    parser.add_argument("-c", "--clean", action="store_true",
-                        help="clean benchmark directory")
-    args = parser.parse_args()
+    args = setup_args(parser)
     if args.clean:
         shutil.rmtree(RESULTS_DIR)
         exit(0)
@@ -102,6 +82,29 @@ def main():
     exit(0)
 
 
+def setup_args(parser):
+    parser.add_argument("-s", "--silent", action="store_true",)
+    # add argument flag -t to specify which test to run
+    # default is to run all tests
+    parser.add_argument("-t", "--test", type=str, default="",
+                        help="test to run (standard, hard)")
+    parser.add_argument("-e", "--enc", type=str, default="",
+                        help="encoding to use (min, eff, ext)")
+    parser.add_argument("-a", "--all", action="store_true",
+                        help="run all tests")
+    parser.add_argument("-k", "--keep", action="store_true",
+                        help="keep converted CNF files and solver output")
+    parser.add_argument("-S", "--summarize", action="store_true",
+                        help="summarize results from -a")
+    parser.add_argument("-d", "--decode", action="store_true",
+                        help="decode solved puzzles")
+    parser.add_argument("-C", "--complete", action="store_true",
+                        help="run all tests and summarize results")
+    parser.add_argument("-c", "--clean", action="store_true",
+                        help="clean benchmark directory")
+    return parser.parse_args()
+
+
 def copy_solution_dir(args):
     out_dir = RESULTS_DIR
     # add trailing slash if not present
@@ -110,7 +113,7 @@ def copy_solution_dir(args):
     decode_solutions()
     if os.path.isdir(f"{out_dir}solutions"):
         shutil.rmtree(f"{out_dir}solutions")
-    shutil.move(f"{CACHE_DIR}solutions", out_dir)
+    shutil.move(f"{CACHE_DIR}/solutions", out_dir)
     if not args.silent:
         print(f"Decoded solutions written to {out_dir}solutions")
 
@@ -163,7 +166,6 @@ def summarize(results):
                 cols, sep_func=header_func, new_line=False))
 
 
-# TODO Rename this here and in `run_all_tests`
 def test_all_silent(summary=False):
     out = RESULTS_DIR
     results = [test_standard(True, Encoding.MINIMAL,
@@ -181,33 +183,24 @@ def test_all_silent(summary=False):
     return results
 
 
-# TODO Rename this here and in `run_all_tests`
 def test_all(summary=False):
     out = RESULTS_DIR
     msg = "Testing {0} puzzles with {1} encoding..."
     print(f"Running all tests, outputting to {out}")
     print("This may take a while...")
 
-    print(format(msg.format("standard", "minimal")))
-    results = [test_standard(True, Encoding.MINIMAL,
-                             f"{out}01-standard-min.md")]
-
-    print(format(msg.format("standard", "efficient")))
-    results.append(test_standard(
-        True, Encoding.EFFICIENT, f"{out}02-standard-eff.md"))
-
-    print(format(msg.format("standard", "extended")))
-    results.append(test_standard(
-        True, Encoding.EXTENDED, f"{out}03-standard-ext.md"))
-
-    print(format(msg.format("hard", "minimal")))
-    results.append(test_hard(True, Encoding.MINIMAL, f"{out}04-hard-min.md"))
-
-    print(format(msg.format("hard", "efficient")))
-    results.append(test_hard(True, Encoding.EFFICIENT, f"{out}05-hard-eff.md"))
-
-    print(format(msg.format("hard", "extended")))
-    results.append(test_hard(True, Encoding.EXTENDED, f"{out}06-hard-ext.md"))
+    results = []
+    i = 1
+    for test in ["standard", "hard"]:
+        for enc in ["minimal", "efficient", "extended"]:
+            print(format(msg.format(test, enc)))
+            if test == "standard":
+                results.append(test_standard(
+                    True, Encoding[enc.upper()], f"{out}{str(i).zfill(2)}-{test}-{enc}.md"))
+            else:
+                results.append(test_hard(
+                    True, Encoding[enc.upper()], f"{out}{str(i).zfill(2)}-{test}-{enc}.md"))
+            i += 1
 
     print("Done!")
     if summary:
@@ -225,7 +218,7 @@ def header(test="Standard", enc=Encoding.MINIMAL):
 
 def test_standard(silent=False, enc=Encoding.MINIMAL, out_dir=""):
     # read /puzzles/p096_sudoku.txt
-    filename = f"{PUZZLE_DIR}p096_sudoku.txt"
+    filename = f"{PUZZLE_DIR}/p096_sudoku.txt"
     file = open(filename, "r")
     # each puzzle is 9 lines long
     # headed by "Grid xx"
@@ -233,7 +226,7 @@ def test_standard(silent=False, enc=Encoding.MINIMAL, out_dir=""):
     # the first puzzle is 1
     # the last puzzle is 50
 
-    working_dir = f"{CACHE_DIR}{enc.name.lower()}/standard/"
+    working_dir = f"{CACHE_DIR}/{enc.name.lower()}/standard/"
     mkdir = f"mkdir -p {working_dir}"
     os.system(mkdir)
     for i in range(50):
@@ -253,14 +246,17 @@ def test_standard(silent=False, enc=Encoding.MINIMAL, out_dir=""):
     # call sat_solve
     head = header("Standard", enc)
     name = enc.name.lower().capitalize()
-    return [name] + sat_solve(silent, working_dir, 50, out_dir, head)
+
+    averages, table_rows = sat_solve(silent, 50, working_dir, out_dir, head)
+    output_results(table_rows, 50, silent, out_dir, header)
+    return (name, ) + averages
 
 
 def test_hard(silent=False, enc=Encoding.MINIMAL, out_dir=""):
     # read /puzzles/p096_sudoku.txt
-    filename = f"{PUZZLE_DIR}top95"
+    filename = f"{PUZZLE_DIR}/top95"
 
-    working_dir = f"{CACHE_DIR}{enc.name.lower()}/hard/"
+    working_dir = f"{CACHE_DIR}/{enc.name.lower()}/hard/"
     mkdir = f"mkdir -p {working_dir}"
     os.system(mkdir)
     with open(filename, "r") as in_file:
@@ -280,63 +276,74 @@ def test_hard(silent=False, enc=Encoding.MINIMAL, out_dir=""):
 
     name = enc.name.lower().capitalize()
     head = header("Hard", enc)
-    return [name] + sat_solve(silent, working_dir, 95, out_dir, head)
+    averages, table_rows = sat_solve(silent, 95, working_dir, out_dir, head)
+    output_results(table_rows, 95, silent, out_dir, header)
+    return (name, ) + averages
 
 
-def sat_solve(silent, in_dir="", c=50, out_dir="", header=""):
+def get_data(data, decisions, d_rates, rates, props, times):
+    decision, _, decision_rate = re.findall(r"[-+]?\d*\.\d+|\d+", data[0])[:3]
+    decisions.append(decision)
+    d_rates.append(decision_rate)
+    decision_rate = f"{decision_rate} decisions/sec"
+
+    props_data = tuple(re.findall(r"[-+]?\d*\.\d+|\d+", data[1])[:2])
+    prop, p_rate = props_data
+    props.append(prop)
+    rates.append(p_rate)
+    p_rate = f"{p_rate} props/sec"
+
+    cpu = data[2].split(":")
+    times.append(cpu[1].strip().replace(" s", ""))
+
+    return [decision.strip(), decision_rate.strip(),
+            prop.strip(), p_rate, cpu[1].strip()]
+
+
+def solve_puzzle(in_dir, work_dir, i, table_rows, lists):
+    filename = f"{in_dir}/sudoku_{str(i + 1).zfill(2)}.cnf"
+    outfile = f"{work_dir}/sudoku_{str(i + 1).zfill(2)}.out"
+    minisat = f"minisat {filename} {outfile}"
+
+    # get output from minisat
+    output = subprocess.Popen(minisat, shell=True,
+                              stdout=subprocess.PIPE).communicate()[0]
+
+    output = output.decode("utf-8").split("\n")
+
+    def want_line(
+        l): return "CPU time" in l or "propagations" in l or "decisions" in l
+
+    data = tuple(line for line in output if want_line(line))
+
+    table_rows.append(get_data(data, *lists))
+
+
+def compute_averages(table_rows, lists, times):
+    def avg(x): return round(sum(float(x) for x in x) / len(x), ROUND_AVG)
+    av_time = round(sum(float(x) for x in times) / len(times), ROUND_AVG+2)
+    av_dec, av_d_rate, av_prop, av_rate = [
+        avg(test_results) for test_results in lists[:-1]]
+    table_rows.append([av_dec, f"{av_d_rate} decisions/sec", av_prop,
+                       f"{av_rate} props/sec", f"{av_time} s"])
+    return (av_dec, av_d_rate, av_prop, av_rate, av_time)
+
+
+def sat_solve(silent, c, in_dir="", out_dir="", header=""):
     # iterate through CNF output and call minisat on each
     work_dir = f"{CACHE_DIR}/sat/standard/" if "standard" in in_dir else f"{CACHE_DIR}/sat/hard/"
     os.system(f"mkdir -p {work_dir}")
-    times, props, rates, decisions, d_rates = [], [], [], [], []
-    table_rows = []
+    table_rows, decisions, d_rates, rates, props, times = [], [], [], [], [], []
+    lists = (decisions, d_rates, rates, props, times)
     for i in range(c):
-        filename = f"{in_dir}/sudoku_{str(i + 1).zfill(2)}.cnf"
-        outfile = f"{work_dir}/sudoku_{str(i + 1).zfill(2)}.out"
-        minisat = f"minisat {filename} {outfile}"
-
-        # intercept stdout, don't let it print to terminal
-        output = subprocess.Popen(
-            minisat, shell=True, stdout=subprocess.PIPE).communicate()[0]
-        output = output.decode("utf-8").split("\n")
-
-        def want_line(
-            l): return "CPU time" in l or "propagations" in l or "decisions" in l
-
-        data = [line for line in output if want_line(line)]
-
-        decision = data[0]
-        vals = re.findall(r"[-+]?\d*\.\d+|\d+", decision)
-        decision = vals[0]
-        decision_rate = f"{vals[2]} decisions/sec"
-        decisions.append(decision)
-        d_rates.append(vals[2])
-
-        prop = data[1]
-        vals = re.findall(r"[-+]?\d*\.\d+|\d+", prop)
-        prop = vals[0]
-        rates.append(vals[1])
-        rate = f"{vals[1]} props/sec"
-
-        cpu = data[2].split(":")
-
-        # append a result row to the table
-        table_rows.append([decision.strip(), decision_rate.strip(),
-                           prop.strip(), rate.strip(), cpu[1].strip()])
-
-        times.append(cpu[1].strip().replace(" s", ""))
-        props.append(prop)
+        solve_puzzle(in_dir, work_dir, i, table_rows, lists)
 
     # add result table for averages of the results
-    averages = []
-    for avg in [props, rates, decisions, d_rates]:
-        avg = [float(x) for x in avg]
-        averages.append(round(sum(avg) / len(avg), ROUND_AVG))
+    averages = compute_averages(table_rows, lists, times)
+    return (averages, table_rows)
 
-    av_prop, av_rate, av_dec, av_d_rate = averages
-    av_time = round(sum(float(x) for x in times) / len(times), ROUND_AVG+2)
-    table_rows.append([av_dec, f"{av_d_rate} decisions/sec", av_prop,
-                       f"{av_rate} props/sec", f"{av_time} s"])
 
+def output_results(table_rows, c, silent, out_dir, header):
     # add a header to the table, the number of puzzles
     # is specified by c, which will be the number of result tables.
     # after this, one more table will be added for the averages,
@@ -345,13 +352,14 @@ def sat_solve(silent, in_dir="", c=50, out_dir="", header=""):
         return f"Test {str(i).zfill(2)}" if i <= c else "Averages"
 
     if table_rows != []:
-        cols = ["Decisions", "Decision Rate", "Propagations",
-                "Propagation Rate", "CPU Time"]
+        cols = ("Decisions", "Decision Rate", "Propagations",
+                "Propagation Rate", "CPU Time")
         table = create_table(header, table_rows, cols,
                              sep_every=1, new_line=False, sep_func=header_func)
 
         if not silent:
             print(table)
+
         if out_dir != "":
             out_dir = out_dir \
                 if out_dir[-4:] == ".txt" or out_dir[-3:] == ".md"\
@@ -359,24 +367,21 @@ def sat_solve(silent, in_dir="", c=50, out_dir="", header=""):
 
             with open(out_dir, "a") as outfile:
                 outfile.write(table)
-        averages.append(av_time)
-
-    return (averages)
 
 
 def decode_solutions():
     # decode solutions from minisat output
-    standard_dir = f"{CACHE_DIR}sat/standard/"
-    hard_dir = f"{CACHE_DIR}sat/hard/"
+    standard_dir = f"{CACHE_DIR}/sat/standard/"
+    hard_dir = f"{CACHE_DIR}/sat/hard/"
     if os.path.exists(standard_dir):
         decode_dir('solutions/standard/', standard_dir,
                    'solutions/standard/sudoku_')
-    if os.path.exists(f"{CACHE_DIR}sat/hard"):
+    if os.path.exists(f"{CACHE_DIR}/sat/hard"):
         decode_dir('/solutions/hard/', hard_dir, 'solutions/hard/sudoku_')
 
 
 def decode_dir(out_dir, in_dir, out_name_head):
-    os.system(f"mkdir -p {CACHE_DIR}{out_dir}")
+    os.system(f"mkdir -p {CACHE_DIR}/{out_dir}")
     # count how many files are in standard_dir
     count = len(list(os.listdir(in_dir)))
     for i in range(count):
@@ -386,7 +391,7 @@ def decode_dir(out_dir, in_dir, out_name_head):
             lines = in_file.readlines()
 
             table = sudoku_to_table(Sud.convert(lines[1]), i)
-            outfile = f"{CACHE_DIR}{out_name_head}{str(i + 1).zfill(2)}.md"
+            outfile = f"{CACHE_DIR}/{out_name_head}{str(i + 1).zfill(2)}.md"
 
             with open(outfile, "w") as out:
                 out.write(table)

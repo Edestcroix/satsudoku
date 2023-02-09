@@ -5,11 +5,11 @@ def convert(cnf: str) -> str:
     sudoku = __format(sudoku)
     return sudoku
 
+
 def __parse(cnf: str) -> list:
     # cnf will be a list of variables, apply to each
     # variable the reverse of 81 * (row-1) + 9 * (column-1) + (value - 1) + 1
-    # to get the row, column, and value
-    # get the variables from the CNF
+    # to get the row and value
     cnf = cnf.replace("\n", "")
     variables = cnf.split()
 
@@ -23,6 +23,7 @@ def __parse(cnf: str) -> list:
             # add the value to the sudoku puzzle
             sudoku[row - 1].append(value)
     return sudoku
+
 
 def __format(sudoku: list) -> str:
     # format the sudoku puzzle
