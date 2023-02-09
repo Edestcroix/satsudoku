@@ -1,14 +1,14 @@
+import json
 import os
 import re
 import subprocess
 from dataclasses import dataclass
+from typing import List, Tuple
 
 import src.convertCNF as Cnf
 from src.convertCNF import Encoding
+from src.tableMD import RawTable
 from src.tableMD import create as create_table
-from src.tableMD import RawTable, Table
-from typing import List, Tuple
-import json
 
 TestResult = Tuple[str, str, str, str, str, str]
 Averages = Tuple[str, str, str, str, str]
