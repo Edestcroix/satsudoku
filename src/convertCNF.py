@@ -18,38 +18,28 @@ def convert(sudoku: str, encoding=Encoding.MINIMAL) -> str:
 
 
 def __getSeparator(sudoku: str) -> str:
-    return next(
-        (
-            sudoku[i]
-            for i in range(len(sudoku))
-            if not sudoku[i].isdigit() or sudoku[i] == "0"
-        ),
-        "",
-    )
+    return next((sudoku[i] for i in range(len(sudoku)) if
+                 not sudoku[i].isdigit() or sudoku[i] == "0"), "",)
 
 
 def __parse(sudoku: str) -> Tuple[list, int]:
-    separator = ""
-    count = 0
-    sudoku_list = []
+    separator, count, sudoku_list = "", 0, []
 
     # strip newlines
     # strip all whitespace, newlines, tabs, etc
     sudoku = re.sub(r"\s+", "", sudoku)
     separator = __getSeparator(sudoku)
-
-    for i in range(1, len(sudoku)):
-        row = i // 9 + 1
-        column = i % 9 + 1
-        if sudoku[i] != separator:
-
-            cell = __cell(row, column, int(sudoku[i]))
+    # split sudoku into chunks of 9
+    for row, column in itertools.product(range(9), range(9)):
+        cell = sudoku[(9*row)+column]
+        if cell != separator:
+            sudoku_list.append(__enc(row+1, column+1, int(cell)))
             count += 1
-            sudoku_list.append(cell)
+
     return (sudoku_list, count)
 
 
-def __cell(row: int, column: int, value: int) -> str:
+def __enc(row: int, column: int, value: int) -> str:
     # encode the cell as a three digit number
     # first digit is the row, second is the column, third is the value
     # store as int
@@ -116,7 +106,7 @@ def __fixed_cnf(file, encoding=Encoding.MINIMAL):
 def __cell_one_number(file):
     for y, x in itertools.product(range(1, 10), range(1, 10)):
         for z in range(1, 10):
-            file.write(f"{str(__cell(x, y, z))} ")
+            file.write(f"{str(__enc(x, y, z))} ")
         file.write("0\n")
 
 
@@ -124,7 +114,7 @@ def __num_once_in_row(file):
     for y, z, x in itertools.product(range(1, 10), range(1, 10), range(1, 10)):
         for i in range((x+1), 10):
             file.write(
-                f"-{str(__cell(x, y, z))} -{str(__cell(i, y, z))}"
+                f"-{str(__enc(x, y, z))} -{str(__enc(i, y, z))}"
                 + " 0\n"
             )
 
@@ -133,7 +123,7 @@ def __num_once_in_column(file):
     for x, z, y in itertools.product(range(1, 10), range(1, 10), range(1, 10)):
         for i in range((y+1), 10):
             file.write(
-                f"-{str(__cell(x, y, z))} -{str(__cell(x, i, z))}"
+                f"-{str(__enc(x, y, z))} -{str(__enc(x, i, z))}"
                 + " 0\n"
             )
 
@@ -142,42 +132,39 @@ def __num_once_in_box(file):
     for z, i, j, x, y in itertools.product(range(1, 10), range(3), range(3), range(1, 4), range(1, 4)):
         for k in range((y+1), 4):
             file.write(
-                f"-{str(__cell(3 * i + x, 3 * j + y, z))} -{str(__cell(3 * i + x, 3 * j + k, z))}"
+                f"-{str(__enc(3 * i + x, 3 * j + y, z))} -{str(__enc(3 * i + x, 3 * j + k, z))}"
                 + " 0\n"
             )
     for z, i, j, x, y in itertools.product(range(1, 10), range(3), range(3), range(1, 4), range(1, 4)):
         for k, l in itertools.product(range((x+1), 4), range(1, 4)):
             file.write(
-                f"-{str(__cell(3 * i + x, 3 * j + y, z))} -{str(__cell(3 * i + k, 3 * j + l, z))}"
-                + " 0\n"
-            )
+                f"-{str(__enc(3 * i + x, 3 * j + y, z))} -{str(__enc(3 * i + k, 3 * j + l, z))}"
+                + " 0\n")
 
 
 def __exactly_one_number(file):
     for i, j, k in itertools.product(range(1, 10), range(1, 10), range(1, 10)):
         for l in range((k+1), 10):
             file.write(
-                f"-{str(__cell(i, j, k))} -{str(__cell(i, j, l))}"
-                + " 0\n"
-            )
+                f"-{str(__enc(i, j, k))} -{str(__enc(i, j, l))}" + " 0\n")
 
 
 def __each_number_at_least_once_row(file):
     for i, k in itertools.product(range(1, 10), range(1, 10)):
         for j in range(1, 10):
-            file.write(f"{str(__cell(i, j, k))} ")
+            file.write(f"{str(__enc(i, j, k))} ")
         file.write("0\n")
 
 
 def __each_number_at_least_once_col(file):
     for j, k in itertools.product(range(1, 10), range(1, 10)):
         for i in range(1, 10):
-            file.write(f"{str(__cell(i, j, k))} ")
+            file.write(f"{str(__enc(i, j, k))} ")
         file.write("0\n")
 
 
 def __each_number_at_least_once_box(file):
     for i, j, k in itertools.product(range(3), range(3), range(1, 10)):
         for x, y in itertools.product(range(1, 4), range(1, 4)):
-            file.write(f"{str(__cell(3 * i + x, 3 * j + y, k))} ")
+            file.write(f"{str(__enc(3 * i + x, 3 * j + y, k))} ")
         file.write("0\n")
