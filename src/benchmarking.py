@@ -3,16 +3,19 @@ import re
 import subprocess
 from dataclasses import dataclass
 
-import src.constants as c
 import src.convertCNF as Cnf
 from src.convertCNF import Encoding
 from src.tableMD import create as create_table
 from src.tableMD import RawTable, Table
 from typing import List, Tuple
+import json
 
 TestResult = Tuple[str, str, str, str, str, str]
 Averages = Tuple[str, str, str, str, str]
 
+CONFIG_FILE = "config.json"
+with open(CONFIG_FILE, "r") as f:
+    CONFIG = json.load(f)
 
 @dataclass
 class TestData:
@@ -30,8 +33,8 @@ class SatSolver():
 
     def __init__(self, pc: int, test: str, enc=Encoding.MINIMAL) -> None:
         self.__puzzle_count: int = pc
-        self.__in_dir: str = f"{c.CACHE_DIR}/{enc.name.lower()}/{test.lower()}"
-        self.__work_dir: str = f"{c.CACHE_DIR}/sat/{test.lower()}/"
+        self.__in_dir: str = f"{CONFIG['cacheDir']}{enc.name.lower()}/{test.lower()}"
+        self.__work_dir: str = f"{CONFIG['cacheDir']}sat/{test.lower()}/"
         self.__table_rows: RawTable = []
         self.params = {
             self.__DECISIONS: [],
@@ -45,10 +48,10 @@ class SatSolver():
     # when a new test is set or a new encoding is set
     def update_testing(self, test=None, enc=None, pc=None):
         if test:
-            self.__work_dir = f"{c.CACHE_DIR}/sat/{test.lower()}/"
+            self.__work_dir = f"{CONFIG['cacheDir']}sat/{test.lower()}/"
         if enc:
             test = test or self.__work_dir.split("/")[-2]
-            self.__in_dir = f"{c.CACHE_DIR}/{enc.name.lower()}/{test.lower()}"
+            self.__in_dir = f"{CONFIG['cacheDir']}{enc.name.lower()}/{test.lower()}"
         if pc:
             self.__puzzle_count = pc
 
@@ -110,8 +113,8 @@ class SatSolver():
                                                                   for x in x) / len(x), r))
         lists: List[list] = list(self.params.values())
         times: list = self.params[self.__TIME]
-        av_time: str = av(times, c.ROUND_AVG+2)
-        averages: list = [av(test_results, c.ROUND_AVG)
+        av_time: str = av(times, CONFIG['round']+2)
+        averages: list = [av(test_results, CONFIG['round'])
                           for test_results in lists[:-1]] + [av_time]
         averages[self.__DECISION_RATE] = f"{averages[self.__DECISION_RATE]} decisions/sec"
         averages[self.__PROP_RATE] = f"{averages[self.__PROP_RATE]} props/sec"
@@ -137,7 +140,7 @@ class Tester():
 
     def test(self, out_dir: str) -> TestResult:
         enc = self.__p.enc
-        working_dir = f"{c.CACHE_DIR}/{enc.name.lower()}/{self.__p.test_type.lower()}"
+        working_dir = f"{CONFIG['cacheDir']}{enc.name.lower()}/{self.__p.test_type.lower()}"
         mkdir = f"mkdir -p {working_dir}"
         os.system(mkdir)
         with open(self.__p.puzzle, "r") as f:

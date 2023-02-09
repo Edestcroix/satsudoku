@@ -1,0 +1,20 @@
+{
+    "resultsDir": "benchmarks/",
+    "puzzleDir": "data/puzzles/",
+    "cacheDir": ".cache/",
+    "round": 2,
+    "puzzles": {
+        "Standard": {
+            "file": "p096_sudoku.txt",
+            "num_puzzles": 50,
+            "puzzle_size": 9,
+            "puzzle_offset": 1
+        },
+        "Hard": {
+            "file": "top95",
+            "num_puzzles": 95,
+            "puzzle_size": 1,
+            "puzzle_offset": 0
+        }
+    }
+}
