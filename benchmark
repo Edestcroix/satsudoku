@@ -229,7 +229,8 @@ def test_standard(silent=False, enc=Encoding.MINIMAL, out_dir=""):
     # the first puzzle is 1
     # the last puzzle is 50
 
-    mkdir = f"mkdir -p {CACHE_DIR}/standard/cnf"
+    working_dir = f"{CACHE_DIR}{enc.name.lower()}/standard/"
+    mkdir = f"mkdir -p {working_dir}"
     os.system(mkdir)
     for i in range(50):
         # read the header
@@ -240,7 +241,7 @@ def test_standard(silent=False, enc=Encoding.MINIMAL, out_dir=""):
         # write to file
 
         # pad number in filename with zero for single digits
-        filename = f"{CACHE_DIR}standard/cnf/sudoku_{str(i+1).zfill(2)}.cnf"
+        filename = f"{working_dir}/sudoku_{str(i+1).zfill(2)}.cnf"
 
         with open(filename, "w") as f:
             f.write(cnf)
@@ -248,14 +249,15 @@ def test_standard(silent=False, enc=Encoding.MINIMAL, out_dir=""):
     # call sat_solve
     head = header("Standard", enc)
     name = enc.name.lower().capitalize()
-    return [name] + sat_solve(silent, f"{CACHE_DIR}standard/", 50, out_dir, head)
+    return [name] + sat_solve(silent, working_dir, 50, out_dir, head)
 
 
 def test_hard(silent=False, enc=Encoding.MINIMAL, out_dir=""):
     # read /puzzles/p096_sudoku.txt
     filename = f"{PUZZLE_DIR}top95"
 
-    mkdir = f"mkdir -p {CACHE_DIR}hard/cnf"
+    working_dir = f"{CACHE_DIR}{enc.name.lower()}/hard/"
+    mkdir = f"mkdir -p {working_dir}"
     os.system(mkdir)
     with open(filename, "r") as in_file:
         # each puzzle is one line, there are 95 puzzles
@@ -267,24 +269,25 @@ def test_hard(silent=False, enc=Encoding.MINIMAL, out_dir=""):
             # write to file
 
             # pad number in filename with zero for single digits
-            filename = f"{CACHE_DIR}hard/cnf/sudoku_{str(i + 1).zfill(2)}.cnf"
+            filename = f"{working_dir}/sudoku_{str(i + 1).zfill(2)}.cnf"
 
             with open(filename, "w") as outfile:
                 outfile.write(cnf)
 
     name = enc.name.lower().capitalize()
     head = header("Hard", enc)
-    return [name] + sat_solve(silent, f"{CACHE_DIR}hard/", 95, out_dir, head)
+    return [name] + sat_solve(silent, working_dir, 95, out_dir, head)
 
 
-def sat_solve(silent, dir="", c=50, out_dir="", header=""):
+def sat_solve(silent, in_dir="", c=50, out_dir="", header=""):
     # iterate through CNF output and call minisat on each
-    os.system(f"mkdir -p {dir}sat")
+    work_dir = f"{CACHE_DIR}/sat/standard/" if "standard" in in_dir else f"{CACHE_DIR}/sat/hard/"
+    os.system(f"mkdir -p {work_dir}")
     times, props, rates, decisions, d_rates = [], [], [], [], []
     table_rows = []
     for i in range(c):
-        filename = f"{dir}cnf/sudoku_{str(i + 1).zfill(2)}.cnf"
-        outfile = f"{dir}sat/sudoku_{str(i + 1).zfill(2)}.out"
+        filename = f"{in_dir}/sudoku_{str(i + 1).zfill(2)}.cnf"
+        outfile = f"{work_dir}/sudoku_{str(i + 1).zfill(2)}.out"
         minisat = f"minisat {filename} {outfile}"
 
         # intercept stdout, don't let it print to terminal
@@ -312,12 +315,14 @@ def sat_solve(silent, dir="", c=50, out_dir="", header=""):
 
         cpu = data[2].split(":")
 
+        # append a result row to the table
         table_rows.append([decision.strip(), decision_rate.strip(),
                            prop.strip(), rate.strip(), cpu[1].strip()])
 
         times.append(cpu[1].strip().replace(" s", ""))
         props.append(prop)
 
+    # add result table for averages of the results
     averages = []
     for avg in [props, rates, decisions, d_rates]:
         avg = [float(x) for x in avg]
@@ -357,10 +362,12 @@ def sat_solve(silent, dir="", c=50, out_dir="", header=""):
 
 def decode_solutions():
     # decode solutions from minisat output
-    if os.path.exists(f"{CACHE_DIR}standard/sat"):
+    standard_dir = f"{CACHE_DIR}sat/standard/"
+    hard_dir = f"{CACHE_DIR}sat/hard/"
+    if os.path.exists(standard_dir):
         os.system(f"mkdir -p {CACHE_DIR}solutions/standard/")
         for i in range(50):
-            filename = f"{CACHE_DIR}standard/sat/sudoku_{str(i + 1).zfill(2)}.out"
+            filename = f"{standard_dir}sudoku_{str(i + 1).zfill(2)}.out"
             # read file and pass to Sud.convert
             with open(filename, "r") as in_file:
                 lines = in_file.readlines()
@@ -369,10 +376,10 @@ def decode_solutions():
                 with open(outfile, "w") as out:
                     out.write(converted)
 
-    if os.path.exists(f"{CACHE_DIR}hard/sat"):
-        os.system(f"mkdir -p {CACHE_DIR}solutions/hard")
+    if os.path.exists(f"{CACHE_DIR}sat/hard"):
+        os.system(f"mkdir -p {CACHE_DIR}/solutions/hard/")
         for i in range(95):
-            filename = f"{CACHE_DIR}hard/sat/sudoku_{str(i + 1).zfill(2)}.out"
+            filename = f"{hard_dir}sudoku_{str(i + 1).zfill(2)}.out"
             # read file and pass to Sud.convert
             with open(filename, "r") as in_file:
                 lines = in_file.readlines()
