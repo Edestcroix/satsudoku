@@ -14,22 +14,31 @@ Args:
                          could be lambda n: f"Test {n}"). Do not put markdown header tags in the output:
                          they are added automatically.
     new_line (bool): Whether to add a new line after the last line of the output.
+    sep (bool): Whether to add separators between rows. If False, col_titles, sep_every, and sep_func are ignored
+                and the first row is used as the column titles.
+                
+Returns:
+    a formatted markdown table, or a sequence of markdown tables, as a string.
 '''
 
 
-def create(title, rows, col_titles, sep_every=3, sep_func=None, new_line=True):
+def create(title, rows, col_titles=None, sep_every=3, sep_func=None, new_line=True, sep=True):
     # find the longest string in each column
     col_widths = [max(len(str(x)) for x in col)
-                  for col in zip(*rows + [col_titles])]
+                  for col in zip(*rows + [col_titles])] if sep\
+                  else [max(len(str(x)) for x in col)
+                        for col in zip(*rows)]
     out = f"# {title}\n"
     sep_count = 0
     sep_line = "|-" + "-|-".join("-" * n for n in col_widths) + "-|" + "\n"
 
     for i, row in enumerate(rows):
-        if i % sep_every == 0:
+        if sep and i % sep_every == 0:
             sep_count += 1
             out += __table_sep(sep_count, sep_func,
                                sep_line, col_widths, col_titles)
+        elif not sep and i == 1:
+            out+=sep_line
 
         out += "| " + " | ".join((str(x).ljust(col_widths[j])
                                   for j, x in enumerate(row))) + " |\n"
