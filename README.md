@@ -47,6 +47,19 @@ All of the output files described below are stored under the `benchmarks` direct
 - If `-S` is specified, the `summary.md` file will contain the summary of the benchmarking results for each encoding and test type.
 - When `-C` is specified, all the outputs from `-a -k -d -S` will be generated.
 
+### Custom Tests
+
+**`benchmark` has not been tested on puzzle sets beyond the ones in this repo, so adding new puzzle sets may cause unexpected behavior and/or not work at all.**
+
+Test may be added by adding a new file containing puzzles to the `data/puzzles/` directory, and adding information about the test to `src/constants.py`.
+The information is in the form of a dictionary key:value pair, where the key will be used as the name of the test, and in the value the following must be specified:
+- The path to the file containing the puzzles, relative to the `data/puzzles/` directory.
+- the number of puzzles in the file.
+- How many lines the puzzle occupies in the file. This should be either 1 or 9, as any other way of storing puzzles has not been tested, and probably won't work. (I.e, 1 line puzzles have a full 9x9 sudoku puzzle but with no whitespace, and 9 line puzzles are a 9x9 sudoku puzzle with each row on a separate line.) It is best to have 9 lines puzzles formatted so that the 9 lines are sequential, with no lines in between; even though whitespace is ignored, unexpected behavior may occur if there are lines in between the rows, as the parser has not been tested with this format.
+- The number of lines between the puzzles. Useful if the puzzle set has headers above each puzzle, or if there are other lines in between puzzles. This should be 0 if there are no lines in between puzzles.
+
+Note that the test name must be unique, and the test name must not contain any whitespace.
+
 ## Dependencies
 - python3
 - minisat2

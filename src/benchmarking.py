@@ -22,7 +22,7 @@ class TestData:
     puzzle: str
     num_puzzles: int
     puzzle_lines: int
-    line_between: bool
+    lines_between: int
 
 
 class SatSolver():
@@ -142,7 +142,7 @@ class Tester():
         os.system(mkdir)
         with open(self.__p.puzzle, "r") as f:
             for i in range(self.__p.num_puzzles):
-                if self.__p.line_between:
+                for _ in range(self.__p.lines_between):
                     f.readline()
                 puzzle = "".join(f.readline()
                                  for _ in range(self.__p.puzzle_lines))
@@ -154,7 +154,7 @@ class Tester():
         averages, table_rows = self.solver.solve()
 
         self.__outputResults(table_rows, out_dir)
-        return (enc.name.lower(), ) + averages
+        return (enc.name.capitalize(), ) + averages
 
     def __outputResults(self, table_rows, out_dir):
         # add a header to the table, the number of puzzles
