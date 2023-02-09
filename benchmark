@@ -46,13 +46,15 @@ def main():
                         help="summarize results from -a")
     parser.add_argument("-d", "--decode", action="store_true",
                         help="decode solved puzzles")
-    parser.add_argument("-C", "--complete", action="store_true", help="run all tests and summarize results")
-    parser.add_argument("-c", "--clean", action="store_true", help="clean benchmark directory")
+    parser.add_argument("-C", "--complete", action="store_true",
+                        help="run all tests and summarize results")
+    parser.add_argument("-c", "--clean", action="store_true",
+                        help="clean benchmark directory")
     args = parser.parse_args()
     if args.clean:
         shutil.rmtree(RESULTS_DIR)
         exit(0)
-    
+
     all_tests = args.all or args.complete
     summary = args.summarize or args.complete
     keep = args.keep or args.complete
@@ -96,6 +98,8 @@ def main():
         copy_working_dir(args)
     else:
         shutil.rmtree(CACHE_DIR)
+
+    exit(0)
 
 
 def copy_solution_dir(args):
@@ -365,28 +369,38 @@ def decode_solutions():
     standard_dir = f"{CACHE_DIR}sat/standard/"
     hard_dir = f"{CACHE_DIR}sat/hard/"
     if os.path.exists(standard_dir):
-        os.system(f"mkdir -p {CACHE_DIR}solutions/standard/")
-        for i in range(50):
-            filename = f"{standard_dir}sudoku_{str(i + 1).zfill(2)}.out"
-            # read file and pass to Sud.convert
-            with open(filename, "r") as in_file:
-                lines = in_file.readlines()
-                converted = Sud.convert(lines[1])
-                outfile = f"{CACHE_DIR}solutions/standard/sudoku_{str(i + 1).zfill(2)}.txt"
-                with open(outfile, "w") as out:
-                    out.write(converted)
-
+        decode_dir('solutions/standard/', standard_dir,
+                   'solutions/standard/sudoku_')
     if os.path.exists(f"{CACHE_DIR}sat/hard"):
-        os.system(f"mkdir -p {CACHE_DIR}/solutions/hard/")
-        for i in range(95):
-            filename = f"{hard_dir}sudoku_{str(i + 1).zfill(2)}.out"
-            # read file and pass to Sud.convert
-            with open(filename, "r") as in_file:
-                lines = in_file.readlines()
-                converted = Sud.convert(lines[1])
-                outfile = f"{CACHE_DIR}solutions/hard/sudoku_{str(i + 1).zfill(2)}.txt"
-                with open(outfile, "w") as out:
-                    out.write(converted)
+        decode_dir('/solutions/hard/', hard_dir, 'solutions/hard/sudoku_')
+
+
+def decode_dir(out_dir, in_dir, out_name_head):
+    os.system(f"mkdir -p {CACHE_DIR}{out_dir}")
+    # count how many files are in standard_dir
+    count = len(list(os.listdir(in_dir)))
+    for i in range(count):
+        filename = f"{in_dir}sudoku_{str(i + 1).zfill(2)}.out"
+        # read file and pass to Sud.convert
+        with open(filename, "r") as in_file:
+            lines = in_file.readlines()
+
+            table = sudoku_to_table(Sud.convert(lines[1]), i)
+            outfile = f"{CACHE_DIR}{out_name_head}{str(i + 1).zfill(2)}.md"
+
+            with open(outfile, "w") as out:
+                out.write(table)
+
+
+def sudoku_to_table(sudoku, i):
+    # convert a sudoku puzzle to a table
+    sudoku = sudoku.replace(" ", "").split("\n")
+    sudoku = [line for line in sudoku if line != ""]
+    sudoku = [list(line) for line in sudoku]
+    dummy = [""] * 9
+    sudoku = [dummy] + sudoku
+
+    return create_table(f"Solution {str(i+1).zfill(2)}", sudoku, new_line=False, sep=False)
 
 
 if __name__ == "__main__":
