@@ -30,7 +30,7 @@ def __format(sudoku: list) -> str:
     # there should be no empty cells because the puzzle is solved
     # add a newline after every 9 cells
     # add a space after every 3 cells
-    formatted_sudoku = ""
+    formatted_sudoku: str = ""
 
     for i in range(len(sudoku)):
         for j in range(len(sudoku[i])):

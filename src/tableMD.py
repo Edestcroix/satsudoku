@@ -20,13 +20,19 @@ Args:
 Returns:
     a formatted markdown table, or a sequence of markdown tables, as a string.
 '''
+from typing import List, Tuple, TypeVar
+
+RawTable = List[TypeVar('Row', List, Tuple)]
+Table = str
 
 
-def create(title, rows, col_titles=None, sep_every=3, sep_func=None, new_line=True, sep=True):
+def create(title, rows: RawTable, col_titles=None, sep_every=3, sep_func=None, new_line=True, sep=True) -> Table:
     # find the longest string in each column
-    col_widths = [max(len(str(x)) for x in col)
-                  for col in zip(*rows + [col_titles])] \
-        if sep else [max(len(str(x)) for x in col) for col in zip(*rows)]
+    col_widths = (
+        [max(len(str(x)) for x in col) for col in zip(*rows + [col_titles])]
+        if col_titles is not None
+        else [max(len(str(x)) for x in col) for col in zip(*rows)]
+    )
     out = f"# {title}\n"
     sep_count = 0
     sep_line = "|-" + "-|-".join("-" * n for n in col_widths) + "-|" + "\n"
@@ -44,7 +50,7 @@ def create(title, rows, col_titles=None, sep_every=3, sep_func=None, new_line=Tr
 
     if new_line:
         out += "\n"
-    return out
+    return Table(out)
 
 
 def __table_sep(sep_count, sep_func, sep_line, col_widths, col_titles):

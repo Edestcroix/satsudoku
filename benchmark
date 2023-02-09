@@ -2,11 +2,13 @@
 import argparse
 import os
 import shutil
+from typing import List, Tuple
 
 import src.constants as c
 import src.convertSUD as Sud
-from src.benchmarking import SatSolver, TestData, Tester
+from src.benchmarking import SatSolver, TestData, Tester, TestResult
 from src.convertCNF import Encoding
+from src.tableMD import RawTable, Table
 from src.tableMD import create as create_table
 
 CACHE_DIR = c.CACHE_DIR
@@ -37,10 +39,10 @@ def main():
         exit(1)
 
     make_dirs()
-    run_tests(args, all_tests, summary, keep, decode)
+    run_tests(args, (all_tests, summary, keep, decode))
 
 
-def make_dirs():
+def make_dirs() -> None:
     if not os.path.isdir(CACHE_DIR):
         os.mkdir(CACHE_DIR)
 
@@ -48,7 +50,7 @@ def make_dirs():
         os.mkdir(RESULTS_DIR)
 
 
-def setup_args(parser):
+def setup_args(parser: argparse.ArgumentParser) -> argparse.Namespace:
     parser.add_argument("-s", "--silent", action="store_true",)
     # add argument flag -t to specify which test to run
     # default is to run all tests
@@ -71,7 +73,8 @@ def setup_args(parser):
     return parser.parse_args()
 
 
-def run_tests(args, all_tests, summary, keep, decode):
+def run_tests(args: argparse.Namespace, params: tuple) -> None:
+    all_tests, summary, keep, decode = params
     if all_tests:
         # fail if -t or -e specified with -a
         if args.test != "" or args.enc != "":
@@ -79,39 +82,39 @@ def run_tests(args, all_tests, summary, keep, decode):
             return
         test_all(summary, args.silent)
     else:
-        run_single_test(args)
+        run_single_test(args.enc, args.test, args.silent)
 
     if decode:
-        copy_solution_dir(args)
+        copy_solution_dir(args.silent)
     if keep:
-        copy_working_dir(args)
+        copy_working_dir(args.silent)
     else:
         shutil.rmtree(CACHE_DIR)
 
 
-def run_single_test(args):
-    if args.enc in ["minimal", "efficient", "extended"]:
-        enc = Encoding(args.enc.upper())
-    elif args.enc == "":
-        enc = Encoding.MINIMAL
+def run_single_test(enc: str, test: str, silent: bool) -> None:
+    if enc in {"minimal", "efficient", "extended"}:
+        encoding = Encoding(enc.upper())
+    elif not enc:
+        encoding = Encoding.MINIMAL
     else:
         print("Error: invalid encoding")
         exit(1)
 
     out = f"{RESULTS_DIR}test_results.md"
-    test = args.test.capitalize() if args.test != "" else "Standard"
-    testdata = TestData(args.silent, test, enc, *PUZZLES[test])
-    solver = SatSolver(PUZZLES[test][1])
+    test = test.capitalize() if test != "" else "Standard"
+    testdata = TestData(silent, test, encoding, *PUZZLES[test])
+    solver = SatSolver(PUZZLES[test][1], test)
     tester = Tester(testdata, solver)
     tester.test(out)
 
 
-def print_if_not(b, str):
+def print_if_not(b: bool, str: str) -> None:
     None if b else print(str)
 
 
-def copy_solution_dir(args):
-    out_dir = RESULTS_DIR
+def copy_solution_dir(silent: bool) -> None:
+    out_dir: str = RESULTS_DIR
     # add trailing slash if not present
     if out_dir[-1] != "/":
         out_dir += "/"
@@ -121,10 +124,10 @@ def copy_solution_dir(args):
     shutil.move(f"{CACHE_DIR}/solutions", out_dir)
 
     print_if_not(
-        args.silent, f"Decoded solutions written to {out_dir}solutions")
+        silent, f"Decoded solutions written to {out_dir}solutions")
 
 
-def copy_working_dir(args):
+def copy_working_dir(silent: bool) -> None:
     # move contents cache dir to results dir
     out_dir = RESULTS_DIR
     # add trailing slash if not present
@@ -135,16 +138,21 @@ def copy_working_dir(args):
         os.mkdir(out_dir)
     if os.path.isdir(f"{out_dir}.working"):
         shutil.rmtree(f"{out_dir}.working")
-    shutil.move(CACHE_DIR, out_dir)
-    if os.path.isdir(f"{out_dir}encodings"):
-        shutil.rmtree(f"{out_dir}encodings")
-    os.rename(f"{out_dir}.working", f"{out_dir}encodings")
+    try:
+        shutil.move(CACHE_DIR, out_dir)
+    except Exception as e:
+        print_if_not(silent, "Failed to move CNF files and solver output to " +
+                     out_dir+"encodings")
+        print_if_not(silent, str(e))
+    else:
+        if os.path.isdir(f"{out_dir}encodings"):
+            shutil.rmtree(f"{out_dir}encodings")
+        os.rename(f"{out_dir}.working", f"{out_dir}encodings")
+        print_if_not(silent, "Converted CNF files and solver output saved to " +
+                     out_dir+"encodings")
 
-    print_if_not(args.silent, "Converted CNF files and solver output saved to " +
-                 out_dir+"encodings")
 
-
-def summarize(results):
+def summarize(results: RawTable) -> None:
     sum_file = f"{RESULTS_DIR}summary.md"
     def header_func(x): return "Averages ― Standard Puzzles" if\
         x == 1 else "Averages ― Hard Puzzles"
@@ -155,19 +163,21 @@ def summarize(results):
                 cols, sep_func=header_func, new_line=False))
 
 
-def test_all(summary=False, silent=False):
-    out = RESULTS_DIR
-    msg = "Testing {0} puzzles with {1} encoding..."
+def test_all(summary: bool = False, silent: bool = False) -> None:
+    out: str = RESULTS_DIR
+    msg: str = "Testing {0} puzzles with {1} encoding..."
     print_if_not(silent, f"Running all tests, outputting to {out}")
     print_if_not(silent, "This may take a while...")
 
-    testdata = TestData(True, "Standard", Encoding.MINIMAL,
-                        *PUZZLES["Standard"])
+    testdata: TestData = TestData(True, "Standard", Encoding.MINIMAL,
+                                  *PUZZLES["Standard"])
 
     # initialize tester with standard puzzles
-    tester = Tester(testdata, SatSolver(PUZZLES["Standard"][1]))
+    tester: Tester = Tester(testdata, SatSolver(
+        PUZZLES["Standard"][1], "Standard"))
 
-    results, i = [], 1
+    results: List[TestResult] = []
+    i: int = 1
 
     # iterates through all test puzzle files and all encodings
     for test in PUZZLES.keys():
@@ -175,8 +185,9 @@ def test_all(summary=False, silent=False):
         tester.update_params(
             TestData(True, test, Encoding.MINIMAL, *PUZZLES[test]))
         for enc in Encoding:
-            name, t = enc.name.lower(), test.lower()
-            out_file = f"{out}{str(i).zfill(2)}-{t}-{name}.md"
+            name: str = enc.name.lower()
+            t: str = test.lower()
+            out_file: str = f"{out}{str(i).zfill(2)}-{t}-{name}.md"
 
             print_if_not(silent, format(msg.format(t, name)))
             tester.update_encoding(enc)
@@ -189,7 +200,7 @@ def test_all(summary=False, silent=False):
         print_if_not(silent, f"Summary saved to {out}summary.md")
 
 
-def decode_solutions():
+def decode_solutions() -> None:
     # decode solutions from minisat output
     standard_dir = f"{CACHE_DIR}/sat/standard/"
     hard_dir = f"{CACHE_DIR}/sat/hard/"
@@ -200,7 +211,7 @@ def decode_solutions():
         decode_dir('/solutions/hard/', hard_dir, 'solutions/hard/sudoku_')
 
 
-def decode_dir(out_dir, in_dir, out_name_head):
+def decode_dir(out_dir: str, in_dir: str, out_name_head: str) -> None:
     os.system(f"mkdir -p {CACHE_DIR}/{out_dir}")
     # count how many files are in standard_dir
     count = len(list(os.listdir(in_dir)))
@@ -210,22 +221,23 @@ def decode_dir(out_dir, in_dir, out_name_head):
         with open(filename, "r") as in_file:
             lines = in_file.readlines()
 
-            table = sudoku_to_table(Sud.convert(lines[1]), i)
+            table = sudoku_to_table(Sud.convert(
+                lines[1]), f"Solution {str(i+1).zfill(2)}")
             outfile = f"{CACHE_DIR}/{out_name_head}{str(i + 1).zfill(2)}.md"
 
             with open(outfile, "w") as out:
                 out.write(table)
 
 
-def sudoku_to_table(sudoku, i):
+def sudoku_to_table(sudoku: str, title: str) -> Table:
     # convert a sudoku puzzle to a table
-    sudoku = sudoku.replace(" ", "").split("\n")
-    sudoku = [line for line in sudoku if line != ""]
-    sudoku = [list(line) for line in sudoku]
+    cell_grid = sudoku.replace(" ", "").split("\n")
+    cell_grid = [line for line in cell_grid if line != ""]
+    cell_grid = [list(line) for line in cell_grid]
     dummy = [""] * 9
-    sudoku = [dummy] + sudoku
+    cell_grid = [dummy] + cell_grid
 
-    return create_table(f"Solution {str(i+1).zfill(2)}", sudoku, new_line=False, sep=False)
+    return create_table(title, cell_grid, new_line=False, sep=False)
 
 
 if __name__ == "__main__":
