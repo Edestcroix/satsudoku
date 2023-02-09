@@ -7,6 +7,11 @@ import src.constants as c
 import src.convertCNF as Cnf
 from src.convertCNF import Encoding
 from src.tableMD import create as create_table
+from src.tableMD import RawTable, Table
+from typing import List, Tuple
+from enum import Enum
+
+TestResult = Tuple[str, str, str, str, str, str]
 
 
 @dataclass
@@ -21,23 +26,31 @@ class TestData:
 
 
 class SatSolver():
-    def __init__(self, puzzle_count: int, source_dir="") -> None:
-        self.__puzzle_count = puzzle_count
-        self.__in_dir = source_dir
-        self.__work_dir = f"{c.CACHE_DIR}/sat/standard/" \
-            if "standard" in self.__in_dir else f"{c.CACHE_DIR}/sat/hard/"
-        self.__solver = "minisat"
-        self.__table_rows, self.__decisions, self.__d_rates,\
-            self.__props, self.__p_rates, self.__times = \
-            [], [], [], [], [], []
+    __DECISIONS, __DECISION_RATE, __PROPS, __PROP_RATE, __TIME = range(5)
 
-    def set_source_dir(self, source_dir):
-        self.__in_dir = source_dir
-        self.__work_dir = f"{c.CACHE_DIR}/sat/standard/" \
-            if "standard" in self.__in_dir else f"{c.CACHE_DIR}/sat/hard/"
+    def __init__(self, pc: int, test: str, enc=Encoding.MINIMAL) -> None:
+        self.__puzzle_count: int = pc
+        self.__in_dir: str = f"{c.CACHE_DIR}/{enc.name.lower()}/{test.lower()}"
+        self.__work_dir: str = f"{c.CACHE_DIR}/sat/{test.lower()}/"
+        self.__table_rows: RawTable = []
+        self.params = {
+            self.__DECISIONS: [],
+            self.__DECISION_RATE: [],
+            self.__PROPS: [],
+            self.__PROP_RATE: [],
+            self.__TIME: []
+        }
 
-    def set_puzzle_count(self, puzzle_count: int):
-        self.__puzzle_count = puzzle_count
+    # Update the testing environment with the proper directories
+    # when a new test is set or a new encoding is set
+    def update_testing(self, test=None, enc=None, pc=None):
+        if test:
+            self.__work_dir = f"{c.CACHE_DIR}/sat/{test.lower()}/"
+        if enc:
+            test = test or self.__work_dir.split("/")[-2]
+            self.__in_dir = f"{c.CACHE_DIR}/{enc.name.lower()}/{test.lower()}"
+        if pc:
+            self.__puzzle_count = pc
 
     def solve(self):
         # iterate through CNF output and call minisat on each
@@ -51,25 +64,25 @@ class SatSolver():
         return results
 
     def __clear(self):
-        self.__table_rows, self.__decisions, self.__d_rates,\
-            self.__props, self.__p_rates, self.__times = \
-            [], [], [], [], [], []
+        self.__table_rows = []
+        for key in self.params:
+            self.params[key] = []
 
     def __getData(self, data):
         decision, _, decision_rate = re.findall(
             r"[-+]?\d*\.\d+|\d+", data[0])[:3]
-        self.__decisions.append(decision)
-        self.__d_rates.append(decision_rate)
+        self.params[self.__DECISIONS].append(decision)
+        self.params[self.__DECISION_RATE].append(decision_rate)
         decision_rate = f"{decision_rate} decisions/sec"
 
         props_data = tuple(re.findall(r"[-+]?\d*\.\d+|\d+", data[1])[:2])
         prop, p_rate = props_data
-        self.__props.append(prop)
-        self.__p_rates.append(p_rate)
+        self.params[self.__PROPS].append(prop)
+        self.params[self.__PROP_RATE].append(p_rate)
         p_rate = f"{p_rate} props/sec"
 
         cpu = data[2].split(":")
-        self.__times.append(cpu[1].strip().replace(" s", ""))
+        self.params[self.__TIME].append(cpu[1].strip().replace(" s", ""))
 
         return [decision.strip(), decision_rate.strip(),
                 prop.strip(), p_rate, cpu[1].strip()]
@@ -77,7 +90,7 @@ class SatSolver():
     def __solvePuzzle(self, i):
         filename = f"{self.__in_dir}/sudoku_{str(i + 1).zfill(2)}.cnf"
         outfile = f"{self.__work_dir}/sudoku_{str(i + 1).zfill(2)}.out"
-        minisat = f"{self.__solver} {filename} {outfile}"
+        minisat = f"minisat {filename} {outfile}"
 
         # get output from minisat
         output = subprocess.Popen(minisat, shell=True,
@@ -93,18 +106,18 @@ class SatSolver():
         self.__table_rows.append(self.__getData(data))
 
     def __computeAverages(self):
-        lists = [self.__decisions, self.__d_rates,
-                 self.__props, self.__p_rates]
+        def av(x, r): return str(round(sum(float(x) for x in x) / len(x), r))
+        lists = list(self.params.values())
+        times = self.params[self.__TIME]
+        av_time = av(times, c.ROUND_AVG+2)
+        averages = [av(test_results, c.ROUND_AVG)
+                                               for test_results in lists[:-1]] + [av_time]
+        averages[self.__DECISION_RATE] = f"{averages[self.__DECISION_RATE]} decisions/sec"
+        averages[self.__PROP_RATE] = f"{averages[self.__PROP_RATE]} props/sec"
+        averages[self.__TIME] = f"{av_time} s"
+        self.__table_rows.append(averages)
 
-        def avg(x): return round(sum(float(x)
-                                     for x in x) / len(x), c.ROUND_AVG)
-        av_time = round(sum(float(x) for x in self.__times) /
-                        len(self.__times), c.ROUND_AVG+2)
-        av_dec, av_d_rate, av_prop, av_rate = [
-            avg(test_results) for test_results in lists]
-        self.__table_rows.append([av_dec, f"{av_d_rate} decisions/sec", av_prop,
-                                  f"{av_rate} props/sec", f"{av_time} s"])
-        return (av_dec, av_d_rate, av_prop, av_rate, av_time)
+        return tuple(averages)
 
 
 class Tester():
@@ -114,12 +127,13 @@ class Tester():
 
     def update_params(self, test_info: TestData):
         self.__p = test_info
-        self.solver.set_puzzle_count(test_info.num_puzzles)
+        self.solver.update_testing(test=test_info.test_type, enc=test_info.enc, pc=test_info.num_puzzles)
 
     def update_encoding(self, enc: Encoding):
         self.__p.enc = enc
+        self.solver.update_testing(enc=enc)
 
-    def test(self, out_dir: str):
+    def test(self, out_dir: str) -> TestResult:
         enc = self.__p.enc
         working_dir = f"{c.CACHE_DIR}/{enc.name.lower()}/{self.__p.test_type.lower()}"
         mkdir = f"mkdir -p {working_dir}"
@@ -135,7 +149,6 @@ class Tester():
                 with open(out_file, "w") as out:
                     out.write(cnf)
 
-        self.solver.set_source_dir(working_dir)
         averages, table_rows = self.solver.solve()
 
         self.__outputResults(table_rows, out_dir)
@@ -147,7 +160,6 @@ class Tester():
             case Encoding.EXTENDED: enc = "Extended"
             case _: enc = "Minimal"
         return f"{self.__p.test_type} Test ({self.__p.enc} Encoding)"
-
 
     def __outputResults(self, table_rows, out_dir):
         # add a header to the table, the number of puzzles
