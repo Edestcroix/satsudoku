@@ -10,7 +10,7 @@ def main():
 
     # get the sudoku from stdin
     try:
-        sudoku = "".join(list(fileinput.input())[1:])
+        sudoku = "".join(list(fileinput.input()))
     except FileNotFoundError:
         # get from arguments if no input is given
         sudoku = " ".join(sys.argv[1:])
