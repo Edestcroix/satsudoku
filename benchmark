@@ -46,18 +46,28 @@ def main():
                         help="summarize results from -a")
     parser.add_argument("-d", "--decode", action="store_true",
                         help="decode solved puzzles")
+    parser.add_argument("-C", "--complete", action="store_true", help="run all tests and summarize results")
+    parser.add_argument("-c", "--clean", action="store_true", help="clean benchmark directory")
     args = parser.parse_args()
+    if args.clean:
+        shutil.rmtree(RESULTS_DIR)
+        exit(0)
+    
+    all_tests = args.all or args.complete
+    summary = args.summarize or args.complete
+    keep = args.keep or args.complete
+    decode = args.decode or args.complete
 
-    if args.summarize and not args.all:
+    if summary and not all_tests:
         print("Error: -S must be used with -a")
         return
 
-    if args.all:
+    if all_tests:
         # fail if -t or -e specified with -a
         if args.test != "" or args.enc != "":
-            print("Error: -a cannot be used with flags other than -o and -s")
+            print("Error: -a/-C cannot be used with flags other -s")
             return
-        run_all_tests(args.silent, args.summarize)
+        run_all_tests(args.silent, summary)
     else:
         match args.enc:
             case "eff": enc = Encoding.EFFICIENT
@@ -80,9 +90,9 @@ def main():
                 print("Error: invalid test")
                 exit(1)
 
-    if args.decode:
+    if decode:
         copy_solution_dir(args)
-    if args.keep:
+    if keep:
         copy_working_dir(args)
     else:
         shutil.rmtree(CACHE_DIR)
