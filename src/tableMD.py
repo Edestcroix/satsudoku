@@ -25,9 +25,8 @@ Returns:
 def create(title, rows, col_titles=None, sep_every=3, sep_func=None, new_line=True, sep=True):
     # find the longest string in each column
     col_widths = [max(len(str(x)) for x in col)
-                  for col in zip(*rows + [col_titles])] if sep\
-                  else [max(len(str(x)) for x in col)
-                        for col in zip(*rows)]
+                  for col in zip(*rows + [col_titles])] \
+        if sep else [max(len(str(x)) for x in col) for col in zip(*rows)]
     out = f"# {title}\n"
     sep_count = 0
     sep_line = "|-" + "-|-".join("-" * n for n in col_widths) + "-|" + "\n"
@@ -38,7 +37,7 @@ def create(title, rows, col_titles=None, sep_every=3, sep_func=None, new_line=Tr
             out += __table_sep(sep_count, sep_func,
                                sep_line, col_widths, col_titles)
         elif not sep and i == 1:
-            out+=sep_line
+            out += sep_line
 
         out += "| " + " | ".join((str(x).ljust(col_widths[j])
                                   for j, x in enumerate(row))) + " |\n"
