@@ -11,7 +11,7 @@ class Encoding(Enum):
     EXTENDED = 2
 
 
-def convert(sudoku: str, encoding=Encoding.MINIMAL) -> str:
+def encode(sudoku: str, encoding=Encoding.MINIMAL) -> str:
     # parse the sudoku string
     sudoku_list, count = __parse(sudoku)
     return __create_cnf(sudoku_list, count, encoding)
