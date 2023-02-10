@@ -3,7 +3,7 @@
 import fileinput
 import sys
 
-import src.convertCNF as Cnf
+from satcoder import encode
 
 
 def main():
@@ -15,7 +15,7 @@ def main():
         # get from arguments if no input is given
         sudoku = " ".join(sys.argv[1:])
 
-    print(Cnf.convert(sudoku))
+    print(encode(sudoku))
 
 
 if __name__ == "__main__":

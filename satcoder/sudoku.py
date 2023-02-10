@@ -1,4 +1,7 @@
-def convert(cnf: str) -> str:
+
+# decodes the CNF assignment output from miniSAT
+# and returns the solved sudoku puzzle as a string
+def decode(cnf: str) -> str:
     # get the sudoku puzzle from the CNF
     sudoku = __parse(cnf)
     # format the sudoku puzzle

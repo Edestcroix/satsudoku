@@ -1,8 +1,9 @@
 .vscode/
 test/
 benchmarks/
-test*
+test.py
 puzzle.cnf
 assign.txt
 *__pycache__*
 .cache/
+TODOS

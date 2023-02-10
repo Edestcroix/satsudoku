@@ -3,7 +3,7 @@
 import fileinput
 import sys
 
-from src.convertSUD import convert as decode
+from satcoder import decode
 
 
 def main():

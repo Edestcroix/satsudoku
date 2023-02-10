@@ -5,11 +5,9 @@ import os
 import shutil
 from typing import List
 
-import src.convertSUD as Sud
-from src.benchmarking import SatSolver, TestData, Tester, TestResult
-from src.convertCNF import Encoding
-from src.tableMD import RawTable, Table
-from src.tableMD import create as create_table
+from benchmarker import SatSolver, TestData, Tester, TestResult
+from mdtable import TableMaker, RawTable, Table
+from satcoder import Encoding, decode
 
 CONFIG_FILE = "config.json"
 
@@ -23,7 +21,7 @@ else:
     # reformat the puzzle sets for easier access later
     # also because the code was written before the config file existed
     # and reworking the code to use the config layout is more annoying
-    # than just reformatting the config here.   
+    # than just reformatting the config here.
     puzzle_sets = CONFIG["puzzleSets"]
     for key in puzzle_sets:
         puzzle_file = f"{CONFIG['puzzleDir']}/{puzzle_sets[key]['file']}"
@@ -194,8 +192,8 @@ def summarize(results: RawTable, puzzle_sets) -> None:
     cols = ["Encoding", "Decisions", "Decision Rate (dcsns/sec)",
             "Propositions", "Proposition Rate (props/sec)", "CPU Time (seconds)"]
     with open(sum_file, "w") as f:
-        f.write(create_table("Results Summary", results,
-                cols, sep_func=header_func, new_line=False))
+        maker = TableMaker(sep_every=3, sep_func=header_func, new_line=False)
+        f.write(maker.table("Results Summary", results, cols))
 
 
 def test_all(summary: bool = False, silent: bool = False) -> None:
@@ -247,8 +245,9 @@ def decode_dir(out_dir: str, in_dir: str, markdown: bool) -> None:
         # read file and pass to Sud.convert
         with open(filename, "r") as in_file:
             lines = in_file.readlines()
-            decoded = Sud.convert(lines[1])
-                
+            
+            decoded = decode(lines[1])
+            
             outfile = f"{CONFIG['cacheDir']}{out_dir}sudoku_{str(i + 1).zfill(2)}"
             if markdown:
                 output = sudoku_to_table(decoded, f"Solution {str(i+1).zfill(2)}")
@@ -256,7 +255,7 @@ def decode_dir(out_dir: str, in_dir: str, markdown: bool) -> None:
             else:
                 output = decoded
                 outfile += ".txt"
-
+                
             with open(outfile, "w") as out:
                 out.write(output)
 
@@ -268,8 +267,8 @@ def sudoku_to_table(sudoku: str, title: str) -> Table:
     cell_grid = [list(line) for line in cell_grid]
     dummy = [""] * 9
     cell_grid = [dummy] + cell_grid
-
-    return create_table(title, cell_grid, new_line=False, sep=False)
+    maker = TableMaker()
+    return maker.table(title, cell_grid)
 
 
 if __name__ == "__main__":
