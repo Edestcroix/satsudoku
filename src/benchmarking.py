@@ -27,8 +27,8 @@ class TestData:
     enc: Encoding
     puzzles_dir: str
     num_puzzles: int
-    puzzle_lines: int
-    lines_between: int
+    offset: int
+    size: int
 
 
 class SatSolver:
@@ -137,8 +137,8 @@ class Tester:
                 enc=Encoding.MINIMAL,
                 puzzles_dir=default["file"],
                 num_puzzles=default["numPuzzles"],
-                puzzle_lines=default["size"],
-                lines_between=default["offset"])
+                size=default["size"],
+                offset=default["offset"])
         if solver is None:
             solver = SatSolver(pc=test_info.num_puzzles,
                                test=test_info.test_type, enc=test_info.enc)
@@ -176,10 +176,10 @@ class Tester:
         enc = self.__p.enc
         with open(self.__p.puzzles_dir, "r") as f:
             for i in range(self.__p.num_puzzles):
-                for _ in range(self.__p.lines_between):
+                for _ in range(self.__p.offset):
                     f.readline()
                 puzzle = "".join(f.readline()
-                                 for _ in range(self.__p.puzzle_lines))
+                                 for _ in range(self.__p.size))
                 cnf = Cnf.convert(puzzle, enc)
                 out_file = f"{working_dir}/sudoku_{str(i+1).zfill(2)}.cnf"
                 with open(out_file, "w") as out:

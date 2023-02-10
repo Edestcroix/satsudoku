@@ -20,13 +20,17 @@ except FileNotFoundError:
     print(f"{CONFIG_FILE} not found.")
     exit()
 else:
+    # reformat the puzzle sets for easier access later
+    # also because the code was written before the config file existed
+    # and reworking the code to use the config layout is more annoying
+    # than just reformatting the config here.   
     puzzle_sets = CONFIG["puzzleSets"]
     for key in puzzle_sets:
         puzzle_file = f"{CONFIG['puzzleDir']}/{puzzle_sets[key]['file']}"
         num_puzzles = puzzle_sets[key]['numPuzzles']
         size = puzzle_sets[key]['size']
         offset = puzzle_sets[key]['offset']
-        CONFIG["puzzleSets"][key] = (puzzle_file, num_puzzles, size, offset)
+        CONFIG["puzzleSets"][key] = (puzzle_file, num_puzzles, offset, size)
 
 
 def main():
