@@ -71,6 +71,8 @@ def __create_cnf(sudoku_list: list, count: int, encoding=Encoding.MINIMAL) -> st
     # unnecessary re-encoding of the CNF is avoided, because
     # the vast majority of the CNF is the same for all sudokus
     if not os.path.exists(filename):
+        mkdir = f"mkdir -p {ENC_DIR}"
+        os.system(mkdir)
         with open(filename, "w") as file:
             __fixed_cnf(file, encoding)
 
