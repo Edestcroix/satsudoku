@@ -6,6 +6,7 @@ puzzle.cnf
 assign.txt
 *__pycache__*
 .cache/
-TODOS
 dist/
 src/satsudoku.egg-info/
+env/*
+bench_test/

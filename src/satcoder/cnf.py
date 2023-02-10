@@ -64,6 +64,9 @@ def __enc(row: int, column: int, value: int) -> str:
 
 
 def __create_cnf(sudoku_list: list, count: int, encoding=Encoding.MINIMAL) -> str:
+    # TODO: This shouldn't just randomly dump files in the working directory.
+    # add a bool to specify whether to cache CNF or not, this way only 
+    # the benchmarking script will cache the CNF, and not sud2sat
     filename = f"{ENC_DIR}sudoku_rules_{encoding.name.lower()}.cnf"
 
     # if the file doesn't exist, create it
