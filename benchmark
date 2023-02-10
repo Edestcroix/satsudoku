@@ -98,6 +98,7 @@ def run_tests(args: argparse.Namespace, params: tuple) -> None:
         run_single_test(args.enc, args.test, args.silent)
 
     if decode:
+        decode_solutions(markdown)
         copy_solution_dir(args.silent)
     if keep:
         copy_working_dir(args.silent)
@@ -137,7 +138,6 @@ def copy_solution_dir(silent: bool) -> None:
     # add trailing slash if not present
     if out_dir[-1] != "/":
         out_dir += "/"
-    decode_solutions()
     if os.path.isdir(f"{out_dir}solutions"):
         shutil.rmtree(f"{out_dir}solutions")
     shutil.move(f"{CONFIG['cacheDir']}solutions", out_dir)
@@ -218,18 +218,15 @@ def test_all(summary: bool = False, silent: bool = False) -> None:
         print_if_not(silent, f"Summary saved to {out}summary.md")
 
 
-def decode_solutions() -> None:
+def decode_solutions(markdown: bool) -> None:
     # decode solutions from minisat output
-    standard_dir = f"{CONFIG['cacheDir']}sat/standard/"
-    hard_dir = f"{CONFIG['cacheDir']}sat/hard/"
-    if os.path.exists(standard_dir):
-        decode_dir('solutions/standard/', standard_dir,
-                   'solutions/standard/sudoku_')
-    if os.path.exists(f"{CONFIG['cacheDir']}sat/hard"):
-        decode_dir('/solutions/hard/', hard_dir, 'solutions/hard/sudoku_')
+    for test in CONFIG["puzzleSets"].keys():
+        test = test.lower()
+        in_dir = f"{CONFIG['cacheDir']}sat/{test}/"
+        if os.path.exists(in_dir):
+            decode_dir(f"solutions/{test}/", in_dir, markdown)
 
-
-def decode_dir(out_dir: str, in_dir: str, out_name_head: str) -> None:
+def decode_dir(out_dir: str, in_dir: str, markdown: bool) -> None:
     os.system(f"mkdir -p {CONFIG['cacheDir']}{out_dir}")
     # count how many files are in standard_dir
     count = len(list(os.listdir(in_dir)))
