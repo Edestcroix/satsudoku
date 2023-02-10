@@ -3,18 +3,18 @@
     "puzzleDir": "data/puzzles/",
     "cacheDir": ".cache/",
     "round": 2,
-    "puzzles": {
+    "puzzleSets": {
         "Standard": {
             "file": "p096_sudoku.txt",
-            "num_puzzles": 50,
-            "puzzle_size": 9,
-            "puzzle_offset": 1
+            "numPuzzles": 50,
+            "size": 9,
+            "offset": 1
         },
         "Hard": {
             "file": "top95",
-            "num_puzzles": 95,
-            "puzzle_size": 1,
-            "puzzle_offset": 0
+            "numPuzzles": 95,
+            "size": 1,
+            "offset": 0
         }
     }
 }

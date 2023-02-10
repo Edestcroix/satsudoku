@@ -13,12 +13,22 @@ from src.tableMD import create as create_table
 
 CONFIG_FILE = "config.json"
 
-with open(CONFIG_FILE, "r") as f:
-    CONFIG = json.load(f)
-puzzles = CONFIG["puzzles"]
-for key in puzzles:
-    CONFIG["puzzles"][key] = (f"{CONFIG['puzzleDir']}/{puzzles[key]['file']}", puzzles[key]
-                              ['num_puzzles'], puzzles[key]['puzzle_size'], puzzles[key]['puzzle_offset'])
+try:
+    with open(CONFIG_FILE, "r") as f:
+        CONFIG = json.load(f)
+except FileNotFoundError:
+    print(f"{CONFIG_FILE} not found.")
+    exit()
+else:
+    puzzle_sets = CONFIG["puzzleSets"]
+    for key in puzzle_sets:
+        puzzle_file = f"{CONFIG['puzzleDir']}/{puzzle_sets[key]['file']}"
+        num_puzzles = puzzle_sets[key]['numPuzzles']
+        size = puzzle_sets[key]['size']
+        offset = puzzle_sets[key]['offset']
+        CONFIG["puzzleSets"][key] = (puzzle_file, num_puzzles, size, offset)
+
+
 def main():
     # set up argument parser
     # with argument flag -c
@@ -50,7 +60,7 @@ def make_dirs() -> None:
     if not os.path.isdir(CONFIG["resultsDir"]):
         os.mkdir(CONFIG["resultsDir"])
 
-    
+
 def setup_args(parser: argparse.ArgumentParser) -> argparse.Namespace:
     parser.add_argument("-s", "--silent", action="store_true",)
     # add argument flag -t to specify which test to run
@@ -102,18 +112,17 @@ def run_single_test(enc: str, test: str, silent: bool) -> None:
         print("Error: invalid encoding")
         exit(1)
 
+    puzzle_sets = CONFIG["puzzleSets"]
 
-    puzzles = CONFIG["puzzles"]
-    
     out = f"{CONFIG['resultsDir']}test_results.md"
 
-    test = test.capitalize() if test != "" else list(puzzles.keys())[0]
-    if test not in puzzles:
+    test = test.capitalize() if test != "" else list(puzzle_sets.keys())[0]
+    if test not in puzzle_sets:
         print("Error: invalid test")
         exit(1)
-    testdata = TestData(silent, test, encoding, *puzzles[test])
-    solver = SatSolver(puzzles[test][1], test)
-    tester = Tester(testdata, solver)
+    test_data = TestData(silent, test, encoding, *puzzle_sets[test])
+    solver = SatSolver(puzzle_sets[test][1], test)
+    tester = Tester(test_data, solver)
     tester.test(out)
 
 
@@ -160,14 +169,14 @@ def copy_working_dir(silent: bool) -> None:
                      out_dir+"encodings")
 
 
-def summarize(results: RawTable, puzzles) -> None:
+def summarize(results: RawTable, puzzle_sets) -> None:
     sum_file = f"{CONFIG['resultsDir']}summary.md"
     # header is generated from the keys of the puzzles dict,
     # this allows for easy addition of tests with new puzzles
     # and the summary will automatically update
 
     def header_func(x):
-        return f"Averages ― {tuple(puzzles.keys())[x-1]} Puzzles"
+        return f"Averages ― {tuple(puzzle_sets.keys())[x-1]} Puzzles"
     cols = ["Encoding", "Decisions", "Decision Rate (dcsns/sec)",
             "Propositions", "Proposition Rate (props/sec)", "CPU Time (seconds)"]
     with open(sum_file, "w") as f:
@@ -177,27 +186,20 @@ def summarize(results: RawTable, puzzles) -> None:
 
 def test_all(summary: bool = False, silent: bool = False) -> None:
     out = CONFIG["resultsDir"]
-    puzzles = CONFIG["puzzles"]
+    puzzle_sets = CONFIG["puzzleSets"]
     msg: str = "Testing {0} puzzles with {1} encoding..."
     print_if_not(silent, f"Running all tests, outputting to {out}")
     print_if_not(silent, "This may take a while...")
-
-    first_test = list(puzzles.keys())[0]
-    testdata: TestData = TestData(True, first_test.capitalize(), Encoding.MINIMAL,
-                                  *puzzles[first_test])
-
-    # initialize tester with standard puzzles
-    tester: Tester = Tester(testdata, SatSolver(
-        puzzles[first_test][1], first_test.capitalize()))
+    tester = initialize_tester(puzzle_sets)
 
     results: List[TestResult] = []
     i: int = 1
 
     # iterates through all test puzzle files and all encodings
-    for test in puzzles.keys():
+    for test in puzzle_sets.keys():
         # update tester parameters when switching tests
         tester.update_params(
-            TestData(True, test, Encoding.MINIMAL, *puzzles[test]))
+            TestData(True, test, Encoding.MINIMAL, *puzzle_sets[test]))
         for enc in Encoding:
             name: str = enc.name.lower()
             t: str = test.lower()
@@ -210,8 +212,20 @@ def test_all(summary: bool = False, silent: bool = False) -> None:
 
     print_if_not(silent, "Done!")
     if summary:
-        summarize(results, puzzles)
+        summarize(results, puzzle_sets)
         print_if_not(silent, f"Summary saved to {out}summary.md")
+
+
+def initialize_tester(puzzle_sets):
+    first_test = list(puzzle_sets.keys())[0]
+    testdata: TestData = TestData(True, first_test.capitalize(),
+                                  Encoding.MINIMAL, *puzzle_sets[first_test])
+
+    # initialize tester with standard puzzles
+    tester: Tester = Tester(testdata, SatSolver(
+        puzzle_sets[first_test][1], first_test.capitalize()))
+
+    return tester
 
 
 def decode_solutions() -> None:
