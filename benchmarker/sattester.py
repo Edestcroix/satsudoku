@@ -1,4 +1,35 @@
 
+import json
+import os
+import re
+import subprocess
+from dataclasses import dataclass
+from typing import List, Tuple
+
+from satcoder import Encoding, decode, encode
+from mdtable import TableMaker, RawTable, Table
+
+from .satsolver import SatSolver
+
+TestResult = Tuple[str, str, str, str, str, str]
+Averages = Tuple[str, str, str, str, str]
+
+CONFIG_FILE = "config.json"
+with open(CONFIG_FILE, "r") as f:
+    # don't need to reformat the puzzle sets
+    # because that part of the config is not used in this file
+    CONFIG = json.load(f)
+
+
+@dataclass
+class TestData:
+    silent: bool
+    test_type: str
+    enc: Encoding
+    puzzles_dir: str
+    num_puzzles: int
+    offset: int
+    size: int
 
 
 class Tester:
@@ -20,7 +51,7 @@ class Tester:
         self.__p: TestData = test_info
         self.solver: SatSolver = solver
         self.__update_working_dir(test_info.enc, test_info.test_type)
-    
+
     def __update_working_dir(self, enc: Encoding, test: str):
         self.__working_dir = f"{CONFIG['cacheDir']}{enc.name.lower()}/{test.lower()}"
 
@@ -55,7 +86,7 @@ class Tester:
                     f.readline()
                 puzzle = "".join(f.readline()
                                  for _ in range(self.__p.size))
-                cnf = Cnf.convert(puzzle, enc)
+                cnf = encode(puzzle, enc)
                 out_file = f"{working_dir}/sudoku_{str(i+1).zfill(2)}.cnf"
                 with open(out_file, "w") as out:
                     out.write(cnf)
@@ -72,8 +103,9 @@ class Tester:
             cols = ("Decisions", "Decision Rate", "Propagations",
                     "Propagation Rate", "CPU Time")
             title = f"{self.__p.test_type} Test ({self.__p.enc.name.capitalize()} Encoding)"
-            table = create_table(title, table_rows, cols,
-                                 sep_every=1, new_line=False, sep_func=header_func)
+            maker = TableMaker(sep_every=1, new_line=False,
+                               sep_func=header_func)
+            table = maker.table(title, table_rows, cols)
 
             self.__print(table)
 
