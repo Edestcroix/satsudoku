@@ -132,7 +132,7 @@ class Tester:
             default_set = CONFIG['defaultPuzzleSet']
             default = CONFIG["puzzleSets"][default_set]
             test_info = TestData(
-                silent=False,
+                silent,
                 test_type=default_set,
                 enc=Encoding.MINIMAL,
                 puzzles_dir=default["file"],
