@@ -11,6 +11,12 @@
             "size": 9,
             "offset": 1
         },
+        "Medium": {
+            "file": "sepb.txt",
+            "numPuzzles": 100,
+            "size": 1,
+            "offset": 0
+        },
         "Hard": {
             "file": "top95",
             "numPuzzles": 95,
