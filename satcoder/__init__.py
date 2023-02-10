@@ -1,2 +1,2 @@
-from satcoder.cnf import Encoding, encode
-from satcoder.sudoku import decode
+from .cnf import Encoding, encode
+from .sudoku import decode
