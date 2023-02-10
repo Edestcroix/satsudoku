@@ -7,3 +7,5 @@ assign.txt
 *__pycache__*
 .cache/
 TODOS
+dist/
+src/satsudoku.egg-info/

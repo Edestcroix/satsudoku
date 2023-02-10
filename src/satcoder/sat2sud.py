@@ -3,7 +3,7 @@
 import fileinput
 import sys
 
-from satcoder import decode
+from . import decode
 
 
 def main():

@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "satsudoku"
+version = "0.0.1"
+dependencies = ['importlib-metadata; python_version < "3.11"']
+
+
+[project.scripts]
+sud2sat = "satcoder.sud2sat:main"
+sat2sud = "satcoder.sat2sud:main"

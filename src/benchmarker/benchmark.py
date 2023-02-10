@@ -5,11 +5,17 @@ import os
 import shutil
 from typing import List
 
-from benchmarker import SatSolver, TestData, Tester, TestResult
+from . import SatSolver, Tester, TestResult, TestData
 from mdtable import TableMaker, RawTable, Table
 from satcoder import Encoding, decode
 
 CONFIG_FILE = "config.json"
+
+# check if .config/satsudoku/config.json exists, and use that if it does,
+# otherwise, look in /etc/satsudoku/config.json
+TEST_CONFIG = f"{os.path.expanduser('~')}/.config/satsudoku/config.json" if \
+    os.path.isfile(f"{os.path.expanduser('~')}/.config/satsudoku/config.json") \
+    else "/etc/satsudoku/config.json"
 
 try:
     with open(CONFIG_FILE, "r") as f:
@@ -35,6 +41,8 @@ def main():
     # set up argument parser
     # with argument flag -c
     # which shows the CPU time for each puzzle
+
+    print(f"Using config file: {TEST_CONFIG}")
 
     parser = argparse.ArgumentParser(
         description="Run tests on the sudoku solver")
