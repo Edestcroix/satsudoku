@@ -43,16 +43,24 @@ def main():
         shutil.rmtree(CONFIG["resultsDir"])
         exit(0)
 
-    all_tests, summary, keep, decode = \
-        (True, True, True, True) if args.complete\
-        else (args.all, args.summarize, args.keep, args.decode)
+    # if args.All is true, then flip the values of all the other
+    # arguments to their opposite. This way, if -C is specified, the actions of
+    # all other arguments are performed, unless they are also specified.
+    # (this way, can say do all tests, but don't summarize, instead of
+    # having to specify all the other arguments except summarize)
+    if args.All:
+        params = (True, not args.summarize, not args.keep,
+                  not args.decode, not args.markdown)
+    else:
+        params = (args.all, args.summarize, args.keep, args.decode,
+                  args.markdown)
 
-    if summary and not all_tests:
+    if params[1] and not params[0]:
         print("Error: -S must be used with -a")
         exit(1)
 
     make_dirs()
-    run_tests(args, (all_tests, summary, keep, decode))
+    run_tests(args, params)
 
 
 def make_dirs() -> None:
@@ -79,15 +87,17 @@ def setup_args(parser: argparse.ArgumentParser) -> argparse.Namespace:
                         help="summarize results from -a")
     parser.add_argument("-d", "--decode", action="store_true",
                         help="decode solved puzzles")
-    parser.add_argument("-C", "--complete", action="store_true",
-                        help="run all tests and summarize results")
+    parser.add_argument("-A", "--All", action="store_true",
+                        help="run all tests with all options")
     parser.add_argument("-c", "--clean", action="store_true",
                         help="clean benchmark directory")
+    parser.add_argument("-m", "--markdown", action="store_true",
+                        help="output solutions in markdown format")
     return parser.parse_args()
 
 
 def run_tests(args: argparse.Namespace, params: tuple) -> None:
-    all_tests, summary, keep, decode = params
+    all_tests, summary, keep, decode, markdown = params
     if all_tests:
         # fail if -t or -e specified with -a
         if args.test != "" or args.enc != "":
@@ -235,13 +245,22 @@ def decode_dir(out_dir: str, in_dir: str, markdown: bool) -> None:
         # read file and pass to Sud.convert
         with open(filename, "r") as in_file:
             lines = in_file.readlines()
+            decoded = decode(lines[1])
+                
+            outfile = f"{CONFIG['cacheDir']}{out_dir}sudoku_{str(i + 1).zfill(2)}"
+            if markdown:
+                output = sudoku_to_table(decoded, f"Solution {str(i+1).zfill(2)}")
+                outfile += ".md"
+            else:
+                output = decoded
+                outfile += ".txt"
 
             table = sudoku_to_table(decode(
                 lines[1]), f"Solution {str(i+1).zfill(2)}")
             outfile = f"{CONFIG['cacheDir']}{out_name_head}{str(i + 1).zfill(2)}.md"
 
             with open(outfile, "w") as out:
-                out.write(table)
+                out.write(output)
 
 
 def sudoku_to_table(sudoku: str, title: str) -> Table:
