@@ -9,13 +9,25 @@ from . import SatSolver, Tester, TestResult, TestData
 from mdtable import TableMaker, RawTable, Table
 from satcoder import Encoding, decode
 
-CONFIG_FILE = "config.json"
+# should all this code be outside main? Maybe not, idk.
+# might do something about it later.
 
-# check if .config/satsudoku/config.json exists, and use that if it does,
-# otherwise, look in /etc/satsudoku/config.json
-TEST_CONFIG = f"{os.path.expanduser('~')}/.config/satsudoku/config.json" if \
-    os.path.isfile(f"{os.path.expanduser('~')}/.config/satsudoku/config.json") \
-    else "/etc/satsudoku/config.json"
+# check if minisat is installed somewhere in $PATH
+# if not, then the solver will not be able to run
+
+if not shutil.which("minisat"):
+    print("Minisat not found in $PATH. Please install minisat.")
+    exit()
+
+# this script needs information about the puzzle sets
+# to benchmark the solver on, which it expects to find in a config file
+# in the directory it is run from.
+WORKING_DIR = os.getcwd()
+CONFIG_FILE = f"{WORKING_DIR}/sat_config.json"
+if not os.path.isfile(CONFIG_FILE):
+    print(f"Expected config {CONFIG_FILE} in working directory.")
+    print(f"{CONFIG_FILE} not found.")
+    exit()
 
 try:
     with open(CONFIG_FILE, "r") as f:
@@ -30,19 +42,34 @@ else:
     # than just reformatting the config here.
     puzzle_sets = CONFIG["puzzleSets"]
     for key in puzzle_sets:
-        puzzle_file = f"{CONFIG['puzzleDir']}/{puzzle_sets[key]['file']}"
+        puzzle_file = f"{CONFIG['puzzleDir']}{puzzle_sets[key]['file']}"
         num_puzzles = puzzle_sets[key]['numPuzzles']
         size = puzzle_sets[key]['size']
         offset = puzzle_sets[key]['offset']
         CONFIG["puzzleSets"][key] = (puzzle_file, num_puzzles, offset, size)
 
 
+def validate_working_dir():
+    # check if puzzleDir exits, and if so,
+    # check if the files specified in the config file exist
+    if not os.path.isdir(CONFIG["puzzleDir"]):
+        print(f"Error: Puzzle directory './{CONFIG['puzzleDir']}' does not exist.")
+        exit()
+    else:
+        for key in CONFIG["puzzleSets"]:
+            if not os.path.isfile(CONFIG["puzzleSets"][key][0]):
+                print(f"Error: Puzzle file './{CONFIG['puzzleSets'][key][0]}' does not exist.")
+                exit()
+
+
 def main():
     # set up argument parser
     # with argument flag -c
     # which shows the CPU time for each puzzle
+    
+    validate_working_dir()
 
-    print(f"Using config file: {TEST_CONFIG}")
+    print(f"Using config file: {CONFIG_FILE}")
 
     parser = argparse.ArgumentParser(
         description="Run tests on the sudoku solver")

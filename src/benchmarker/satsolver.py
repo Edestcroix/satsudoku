@@ -8,7 +8,7 @@ from satcoder import Encoding
 TestResult = Tuple[str, str, str, str, str, str]
 Averages = Tuple[str, str, str, str, str]
 
-CONFIG_FILE = "config.json"
+CONFIG_FILE = f"{os.getcwd()}/sat_config.json"
 
 class SatSolver:
     __DECISIONS, __DECISION_RATE, __PROPS, __PROP_RATE, __TIME = range(5)

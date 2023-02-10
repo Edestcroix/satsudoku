@@ -12,7 +12,8 @@ from .satsolver import SatSolver
 TestResult = Tuple[str, str, str, str, str, str]
 Averages = Tuple[str, str, str, str, str]
 
-CONFIG_FILE = "config.json"
+
+CONFIG_FILE = f"{os.getcwd()}/sat_config.json"
 with open(CONFIG_FILE, "r") as f:
     # don't need to reformat the puzzle sets
     # because that part of the config is not used in this file
