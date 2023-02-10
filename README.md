@@ -21,7 +21,7 @@ Only 9x9 puzzles are supported. The input must be in the format output by `minis
 695 417 382  
 
 ## Benchmarking
-The `benchmark` script runs the same encoding functions in `src/` as sud2sat on puzzles from `data/puzzles` and gathers benchmarking data from `minisat` solving these puzzles. It also optionally decodes the solutions from `minisat` into markdown tables and outputs them to files.
+The `benchmark` script encodes puzzles from `data/puzzles` into CNF form and and gathers benchmarking data from `minisat` solving these puzzles. It also optionally decodes the solutions from `minisat` into markdown tables and outputs them to files.
 ### Usage
 -  `-s --silent` prevents printing to stdout.
 - `-t=[] --test=[]` specify testing standard or hard puzzles, defaults to standard when not specified
