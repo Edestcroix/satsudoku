@@ -1,13 +1,11 @@
 
 import json
 import os
-import re
-import subprocess
 from dataclasses import dataclass
-from typing import List, Tuple
+from typing import Tuple
 
-from satcoder import Encoding, decode, encode
-from mdtable import TableMaker, RawTable, Table
+from satcoder import Encoding, encode
+from mdtable import TableMaker
 
 from .satsolver import SatSolver
 
@@ -103,8 +101,10 @@ class Tester:
             cols = ("Decisions", "Decision Rate", "Propagations",
                     "Propagation Rate", "CPU Time")
             title = f"{self.__p.test_type} Test ({self.__p.enc.name.capitalize()} Encoding)"
+
             maker = TableMaker(sep_every=1, new_line=False,
                                sep_func=header_func)
+
             table = maker.table(title, table_rows, cols)
 
             self.__print(table)
