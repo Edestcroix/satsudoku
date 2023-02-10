@@ -1,11 +1,10 @@
-
 import json
 import os
 from dataclasses import dataclass
 from typing import Tuple
 
-from satcoder import Encoding, encode
 from mdtable import TableMaker
+from satcoder import Encoding, encode
 
 from .satsolver import SatSolver
 

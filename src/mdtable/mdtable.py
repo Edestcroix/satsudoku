@@ -3,6 +3,7 @@ from typing import List, Tuple, TypeVar
 RawTable = List[TypeVar('Row', List, Tuple)]
 Table = str
 
+
 class TableMaker:
     def __init__(self, sep_every=3, sep_func=None, new_line=True):
         self.sep_every = sep_every

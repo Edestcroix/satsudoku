@@ -1,13 +1,13 @@
-#! /usr/bin/env python3
 import argparse
 import json
 import os
 import shutil
 from typing import List
 
-from . import SatSolver, Tester, TestResult, TestData
-from mdtable import TableMaker, RawTable, Table
+from mdtable import RawTable, Table, TableMaker
 from satcoder import Encoding, decode
+
+from . import SatSolver, TestData, Tester, TestResult
 
 # should all this code be outside main? Maybe not, idk.
 # might do something about it later.
@@ -53,12 +53,14 @@ def validate_working_dir():
     # check if puzzleDir exits, and if so,
     # check if the files specified in the config file exist
     if not os.path.isdir(CONFIG["puzzleDir"]):
-        print(f"Error: Puzzle directory './{CONFIG['puzzleDir']}' does not exist.")
+        print(
+            f"Error: Puzzle directory './{CONFIG['puzzleDir']}' does not exist.")
         exit()
     else:
         for key in CONFIG["puzzleSets"]:
             if not os.path.isfile(CONFIG["puzzleSets"][key][0]):
-                print(f"Error: Puzzle file './{CONFIG['puzzleSets'][key][0]}' does not exist.")
+                print(
+                    f"Error: Puzzle file './{CONFIG['puzzleSets'][key][0]}' does not exist.")
                 exit()
 
 
@@ -66,7 +68,7 @@ def main():
     # set up argument parser
     # with argument flag -c
     # which shows the CPU time for each puzzle
-    
+
     validate_working_dir()
 
     print(f"Using config file: {CONFIG_FILE}")

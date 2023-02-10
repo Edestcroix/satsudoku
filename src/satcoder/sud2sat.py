@@ -1,12 +1,10 @@
-#!/usr/bin/env python3
-
 import fileinput
 import sys
 
 from . import encode
 
-def main():
 
+def main():
     # get the sudoku from stdin
     try:
         sudoku = "".join(list(fileinput.input()))

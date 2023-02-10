@@ -3,6 +3,7 @@ import os
 import re
 import subprocess
 from typing import List, Tuple
+
 from satcoder import Encoding
 
 TestResult = Tuple[str, str, str, str, str, str]
@@ -10,11 +11,12 @@ Averages = Tuple[str, str, str, str, str]
 
 CONFIG_FILE = f"{os.getcwd()}/sat_config.json"
 
+
 class SatSolver:
     __DECISIONS, __DECISION_RATE, __PROPS, __PROP_RATE, __TIME = range(5)
 
     def __init__(self, pc: int, test: str, enc=Encoding.MINIMAL) -> None:
-    
+
         with open(CONFIG_FILE, "r") as f:
             self.config = json.load(f)
         self.__puzzle_count: int = pc
@@ -29,8 +31,8 @@ class SatSolver:
             self.__TIME: []
         }
 
-
     # Update the testing environment with new parameters
+
     def update_parameters(self, test=None, enc=None, pc=None):
         if test:
             self.__work_dir = f"{self.config['cacheDir']}sat/{test.lower()}/"
@@ -107,4 +109,3 @@ class SatSolver:
         self.__table_rows.append(tuple(averages))
 
         return tuple(averages)
-
