@@ -255,9 +255,7 @@ def decode_dir(out_dir: str, in_dir: str, markdown: bool) -> None:
                 output = decoded
                 outfile += ".txt"
 
-            table = sudoku_to_table(decode(
-                lines[1]), f"Solution {str(i+1).zfill(2)}")
-            outfile = f"{CONFIG['cacheDir']}{out_name_head}{str(i + 1).zfill(2)}.md"
+            outfile = f"{CONFIG['cacheDir']}{out_dir}sudoku_{str(i + 1).zfill(2)}.md"
 
             with open(outfile, "w") as out:
                 out.write(output)
