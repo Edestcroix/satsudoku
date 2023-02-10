@@ -155,7 +155,7 @@ def run_tests(args: argparse.Namespace, params: tuple) -> None:
 
 def run_single_test(enc: str, test: str, silent: bool) -> None:
     if enc in {"minimal", "efficient", "extended"}:
-        encoding = Encoding(enc.upper())
+        encoding = Encoding[enc.upper()]
     elif not enc:
         encoding = Encoding.MINIMAL
     else:
@@ -171,7 +171,7 @@ def run_single_test(enc: str, test: str, silent: bool) -> None:
         print("Error: invalid test")
         exit(1)
     test_data = TestData(silent, test, encoding, *puzzle_sets[test])
-    solver = SatSolver(puzzle_sets[test][1], test)
+    solver = SatSolver(test_data.num_puzzles, test, encoding)
     tester = Tester(test_data, solver)
     tester.test(out)
 
