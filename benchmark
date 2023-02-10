@@ -191,7 +191,7 @@ def test_all(summary: bool = False, silent: bool = False) -> None:
     print_if_not(silent, f"Running all tests, outputting to {out}")
     print_if_not(silent, "This may take a while...")
 
-    tester = Tester(silent)
+    tester = Tester(silent=silent)
     results: List[TestResult] = []
     i: int = 1
 
@@ -257,4 +257,7 @@ def sudoku_to_table(sudoku: str, title: str) -> Table:
 
 
 if __name__ == "__main__":
+    # didn't put this in main() because it's only called once,
+    # and the values updated by this function should never change
+    # again after this
     main()

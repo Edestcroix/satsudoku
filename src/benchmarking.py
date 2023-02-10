@@ -127,7 +127,7 @@ class SatSolver:
 
 
 class Tester:
-    def __init__(self, silent, test_info=None, solver=None):
+    def __init__(self, test_info=None, solver=None, silent=False):
         if test_info is None:
             default_set = CONFIG['defaultPuzzleSet']
             default = CONFIG["puzzleSets"][default_set]
