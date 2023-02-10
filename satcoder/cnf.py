@@ -5,10 +5,25 @@ from enum import Enum
 from typing import IO, TextIO, Tuple
 
 
+# sudoku puzzles can be encoded into CNF in 3 different ways,
+# each encoding has progressively more clauses, and takes longer
+# to solve. The rules set by the efficient and extended encodings
+# are implicitly satisfied by the minimal encoding, so the minimal
+# is really the most efficient encoding, but the other two are
+# included for completeness.
 class Encoding(Enum):
     MINIMAL = 0
     EFFICIENT = 1
     EXTENDED = 2
+
+
+# if this manages to get packaged, this will have to be changed
+# to some path like XDG_DATA_HOME or ~/.local/share or something
+ENC_DIR = "data/"
+
+# given a sudoku string,
+# returns the CNF encoding of the sudoku as a string
+# these string are VERY large, as CNF is a very verbose format
 
 
 def encode(sudoku: str, encoding=Encoding.MINIMAL) -> str:
@@ -49,13 +64,16 @@ def __enc(row: int, column: int, value: int) -> str:
 
 
 def __create_cnf(sudoku_list: list, count: int, encoding=Encoding.MINIMAL) -> str:
-    filename = f"data/sudoku_rules_{encoding.name.lower()}.cnf"
+    filename = f"{ENC_DIR}sudoku_rules_{encoding.name.lower()}.cnf"
 
     # if the file doesn't exist, create it
-    # and write the sudoku rules to it
+    # and write the sudoku rules to it, this way
+    # unnecessary re-encoding of the CNF is avoided, because
+    # the vast majority of the CNF is the same for all sudokus
     if not os.path.exists(filename):
         with open(filename, "w") as file:
             __fixed_cnf(file, encoding)
+
     sudoku_rules = open(filename, "r")
     # add the header
 
@@ -103,6 +121,9 @@ def __fixed_cnf(file, encoding=Encoding.MINIMAL):
         __each_number_at_least_once_box(file)
 
 
+# Below Lies The Land Of Nested For Loops
+# (seriously, this is a lot of for loops, thank the flying
+# spaghetti monster for itertools.product)
 def __cell_one_number(file: TextIO) -> None:
     for y, x in itertools.product(range(1, 10), range(1, 10)):
         for z in range(1, 10):

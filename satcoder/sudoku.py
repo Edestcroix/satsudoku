@@ -1,9 +1,13 @@
+
+# decodes the CNF assignment output from miniSAT
+# and returns the solved sudoku puzzle as a string
 def decode(cnf: str) -> str:
     # get the sudoku puzzle from the CNF
     sudoku = __parse(cnf)
     # format the sudoku puzzle
     sudoku = __format(sudoku)
     return sudoku
+
 
 def __parse(cnf: str) -> list:
     # cnf will be a list of variables, apply to each
@@ -22,6 +26,7 @@ def __parse(cnf: str) -> list:
             # add the value to the sudoku puzzle
             sudoku[row - 1].append(value)
     return sudoku
+
 
 def __format(sudoku: list) -> str:
     # format the sudoku puzzle
