@@ -1,0 +1,27 @@
+
+
+- sud2sat and sat2sud both work out of the box when packaged, but
+benchmark is not exposed as a command on installation yet, because it 
+needs to be reworked to find data files and config files outside of 
+the source tree.
+
+
+to get this working, will need:
+- **a new way of finding puzzle sets**, currently they are specified in a config file
+  relative to the source tree, but this needs to be changed. It could be as simple as
+  changing puzzleDir in the config.
+
+- as an idea, could specify puzzle sets at runtime by passing the filename as an argument and require a header line in 
+  the puzzle set file to specify the test info that is currently in the config file.
+
+- would then need to remove the puzzle set info from the config file, and add a parser to read the data
+  that would have been in the config from the header line in the puzzle set file.
+
+- another idea: **work the script to expect to be called in a specially organized directory** with
+  puzzle sets and a config file specifying info for each set. This would probably be better
+  as it could use the same config parsing it already has.
+
+- **a new way of finding the config file**, currently it hardcoded. The config file should 
+  be looked for in ~/.config/satsudoku or something, and if not found there should be
+  some way of providing defaults. This could tie into the idea above of having tests and config
+  being required in the directory the script is called from.
