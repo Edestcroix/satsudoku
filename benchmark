@@ -116,7 +116,7 @@ def run_single_test(enc: str, test: str, silent: bool) -> None:
 
     out = f"{CONFIG['resultsDir']}test_results.md"
 
-    test = test.capitalize() if test != "" else list(puzzle_sets.keys())[0]
+    test = test.capitalize() if test else CONFIG["defaultPuzzleSet"]
     if test not in puzzle_sets:
         print("Error: invalid test")
         exit(1)
@@ -190,8 +190,8 @@ def test_all(summary: bool = False, silent: bool = False) -> None:
     msg: str = "Testing {0} puzzles with {1} encoding..."
     print_if_not(silent, f"Running all tests, outputting to {out}")
     print_if_not(silent, "This may take a while...")
-    tester = initialize_tester(puzzle_sets)
 
+    tester = Tester(silent)
     results: List[TestResult] = []
     i: int = 1
 
@@ -214,18 +214,6 @@ def test_all(summary: bool = False, silent: bool = False) -> None:
     if summary:
         summarize(results, puzzle_sets)
         print_if_not(silent, f"Summary saved to {out}summary.md")
-
-
-def initialize_tester(puzzle_sets):
-    first_test = list(puzzle_sets.keys())[0]
-    testdata: TestData = TestData(True, first_test.capitalize(),
-                                  Encoding.MINIMAL, *puzzle_sets[first_test])
-
-    # initialize tester with standard puzzles
-    tester: Tester = Tester(testdata, SatSolver(
-        puzzle_sets[first_test][1], first_test.capitalize()))
-
-    return tester
 
 
 def decode_solutions() -> None:

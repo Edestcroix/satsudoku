@@ -3,6 +3,7 @@
     "puzzleDir": "data/puzzles/",
     "cacheDir": ".cache/",
     "round": 2,
+    "defaultPuzzleSet": "Standard",
     "puzzleSets": {
         "Standard": {
             "file": "p096_sudoku.txt",

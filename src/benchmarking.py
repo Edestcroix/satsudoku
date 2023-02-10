@@ -15,6 +15,8 @@ Averages = Tuple[str, str, str, str, str]
 
 CONFIG_FILE = "config.json"
 with open(CONFIG_FILE, "r") as f:
+    # don't need to reformat the puzzle sets
+    # because that part of the config is not used in this file
     CONFIG = json.load(f)
 
 
@@ -23,7 +25,7 @@ class TestData:
     silent: bool
     test_type: str
     enc: Encoding
-    puzzle: str
+    puzzles_dir: str
     num_puzzles: int
     puzzle_lines: int
     lines_between: int
@@ -125,11 +127,25 @@ class SatSolver:
 
 
 class Tester:
-    def __init__(self, test_info: TestData, solver: SatSolver):
+    def __init__(self, silent, test_info=None, solver=None):
+        if test_info is None:
+            default_set = CONFIG['defaultPuzzleSet']
+            default = CONFIG["puzzleSets"][default_set]
+            test_info = TestData(
+                silent=False,
+                test_type=default_set,
+                enc=Encoding.MINIMAL,
+                puzzles_dir=default["file"],
+                num_puzzles=default["numPuzzles"],
+                puzzle_lines=default["size"],
+                lines_between=default["offset"])
+        if solver is None:
+            solver = SatSolver(pc=test_info.num_puzzles,
+                               test=test_info.test_type, enc=test_info.enc)
         self.__p: TestData = test_info
         self.solver: SatSolver = solver
         self.__update_working_dir(test_info.enc, test_info.test_type)
-
+    
     def __update_working_dir(self, enc: Encoding, test: str):
         self.__working_dir = f"{CONFIG['cacheDir']}{enc.name.lower()}/{test.lower()}"
 
@@ -158,7 +174,7 @@ class Tester:
 
     def __encode_puzzles(self, working_dir):
         enc = self.__p.enc
-        with open(self.__p.puzzle, "r") as f:
+        with open(self.__p.puzzles_dir, "r") as f:
             for i in range(self.__p.num_puzzles):
                 for _ in range(self.__p.lines_between):
                     f.readline()
