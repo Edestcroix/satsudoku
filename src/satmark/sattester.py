@@ -84,7 +84,8 @@ class Tester:
                     f.readline()
                 puzzle = "".join(f.readline()
                                  for _ in range(self.__p.size))
-                cnf = encode(puzzle, enc)
+                # set write to true, so fixed cnf is cached
+                cnf = encode(puzzle, enc, True)
                 out_file = f"{working_dir}/sudoku_{str(i+1).zfill(2)}.cnf"
                 with open(out_file, "w") as out:
                     out.write(cnf)

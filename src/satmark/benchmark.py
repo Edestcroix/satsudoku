@@ -9,6 +9,7 @@ from satcoder import Encoding, decode
 
 from . import SatSolver, TestData, Tester, TestResult
 
+
 # should all this code be outside main? Maybe not, idk.
 # might do something about it later.
 
@@ -202,6 +203,8 @@ def copy_working_dir(silent: bool) -> None:
 
     if not os.path.isdir(out_dir):
         os.mkdir(out_dir)
+    if os.path.isdir(f"{CONFIG['cacheDir']}fixed_cnf"):
+        shutil.rmtree(f"{CONFIG['cacheDir']}fixed_cnf")
     if os.path.isdir(f"{out_dir}{CONFIG['cacheDir']}"):
         shutil.rmtree(f"{out_dir}{CONFIG['cacheDir']}")
     try:
