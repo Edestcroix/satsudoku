@@ -21,7 +21,7 @@ Only 9x9 puzzles are supported. The input must be in the format output by `minis
 695 417 382  
 
 ## Benchmarking
-The `benchmark` script encodes puzzles from `data/puzzles` into CNF form and and gathers benchmarking data from `minisat` solving these puzzles. It also optionally decodes the solutions from `minisat` into markdown tables and outputs them to files.
+`satmark` is a script for benchmarking minisat solving sudoku puzzles. It uses the same code as `sud2sat` and `sat2sud` to generate CNF encodings and decode solutions, but it also gathers data from `minisat` and outputs it to files. It can also optionally decode the solved sudoku puzzles and output them to files. It expects a config file and directory containing puzzles to test on in the directory it is called in. See the [Configuration](#configuration) section for more details.
 ### Usage
 -  `-s --silent` prevents printing to stdout.
 - `-t=[] --test=[]` specify testing standard or hard puzzles, defaults to standard when not specified
@@ -70,38 +70,57 @@ The full layout of the output directory with all possible outputs is as follows:
 - When only a single test is run, `test_results.md` is generated in place of the `[num]-[test]-[encoding].md` files. 
 
 ### Configuration
-The configuration file is located at `config.json`. The following options are available:
-- `resultsDir` is the directory where benchmarking results will be stored. Defaults to `benchmarks`.
-- `puzzleDir` is the directory where puzzle files are stored. Defaults to `data/puzzles`.
-- `cacheDir` is the directory where CNF encodings will be temporarily stored while benchmarking. Defaults to `.cache`.
+To run `satmark`, create a config file in the directory you are running it in called `sat_config.json`. The config file is a JSON object with the following fields:
+```
+{
+    "resultsDir": "[directory]"
+    "puzzleDir": "[directory]",
+    "cacheDir": "[directory]",
+    "round": [rounding amount],
+    "defaultPuzzleSet": "[puzzle set]",
+    "puzzleSets": {
+        "[set name]": {
+            "path": "[file path]",
+            "numPuzzles": [number of puzzles],
+            "size": [lines per puzzle],
+            "offset": [lines to skip]
+        },
+        ...
+    }
+}
+```
+see `example_config.json` for an example config file.
+
+- `resultsDir` is the directory where benchmarking results will be stored.
+- `puzzleDir` is the directory where `satmark` will look for puzzle files, must be a subdirectory of the directory `satmark` is run in. (the directory containing `sat_config.json`)
+- `cacheDir` is the directory where CNF encodings will be temporarily stored while benchmarking.
 - `round` is the number of decimal places to round benchmarking results to. Defaults to 2.
-- `defaultPuzzleSet` specifies the default puzzle set to use when running `benchmark` with no arguments. Defaults to `standard`.
+- `defaultPuzzleSet` specifies the default puzzle set to use when running `satmark` with no arguments, must be a key in `puzzleSets`.
 - `puzzleSets` for defining test parameters for puzzle sets. See below for more information.
 
-### Custom Tests
-
-Tests may be added by adding a new file containing puzzles to the `data/puzzles/` directory and configuring it in `config.json` by adding it to the `puzzles` array, with the key being the name of the test. A puzzle entry is of the following format:
+### Defining Tests
+Tests can be defined by adding a new entry to the `puzzleSets` object in `sat_config.json` and a new file containing the puzzles to be used in the specified `puzzleDir`.
+A puzzle entry is of the following format:
 ```
 "test_name": {
-    "path": "path/to/puzzle/file",
+    "file": "path/to/puzzle/file",
     "numPuzzles": 100,
     "size": 9,
     "offset": 0
 }
 ```
-- `test_name` is the name of the test to be used as an identifier internally and in the output. Tests must have unique names.
-- `path` is the path to the puzzle file, relative to the `puzzleDir` directory specified in `config.json`.
+- `set_name` is the name of the puzzle set, to be used as an identifier internally and in the output. Sets must have unique names.
+- `file` is the path to the puzzle file, relative to the `puzzleDir` directory specified in `config.json`.
 - `numPuzzles` is the number of puzzles in the file.
-- `size` is how many lines the puzzle occupies in the file. This should be either 1 or 9, as any other way of storing puzzles has not been tested, and probably won't work. (I.e, 1-line puzzles have a full 9x9 sudoku puzzle but with no whitespace, and 9-line puzzles are a 9x9 sudoku puzzle with each row on a separate line.) 
-- `offset` is the number of lines between the puzzles. Useful for puzzles that have a line between each puzzle, or puzzles that have a header line. Note that this is only lines between puzzles, not lines between rows of a puzzle. It is best to have 9-line puzzles formatted so that the 9 lines are sequential, with no lines in between; even though whitespace is ignored, unexpected behavior may occur if there are lines in between the rows, as the parser has not been tested with this format.
+- `size` is how many lines each puzzle occupies in the file. This should be either 1 or 9, as any other way of storing puzzles has not been tested, and probably won't work. (I.e, 1-line puzzles have a full 9x9 sudoku puzzle with no newlines, and 9-line puzzles are a 9x9 sudoku puzzle with each row on a separate line.) 
+- `offset` is the number of lines between the puzzles. Note that this is only lines between puzzles, not lines between rows of a puzzle. It is best to have 9-line puzzles formatted so that the 9 lines are sequential, with no lines in between. Even though whitespace is ignored, unexpected behavior may occur if there are lines in between the rows, as the parser has not been tested with this format and any lines between rows that are not whitespace will be considered part of the puzzle.
 
-In theory, any set of 1-line or 9-line puzzles should work; the "medium" tests were added after the benchmarker was reworked to generalize over any puzzle sets and it worked without issue, but no other sets have been tested yet, so look out for potential bugs when adding puzzle sets.
   
 ## Dependencies
 - python3.11 or later (may work with earlier versions, but has not been tested)
 - [minisat](http://minisat.se/) (tested with version 2.2.1). The scripts in this repo just call `minisat` as a shell command, so it must be installed and available in `$PATH`
-## Sources
-Puzzles in /data/puzzles taken from:
+
+## Example Puzzle Sets
 - https://projecteuler.net/project/resources/p096_sudoku.txt
 
 - http://magictour.free.fr/top95
