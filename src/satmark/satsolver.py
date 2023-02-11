@@ -1,10 +1,11 @@
-import json
 import os
 import re
 import subprocess
 from typing import List, Tuple
 
 from satcoder import Encoding
+
+from .conf import Config
 
 TestResult = Tuple[str, str, str, str, str, str]
 Averages = Tuple[str, str, str, str, str]
@@ -16,11 +17,11 @@ class SatSolver:
     __DECISIONS, __DECISION_RATE, __PROPS, __PROP_RATE, __TIME = range(5)
 
     def __init__(self, pc: int, test: str, enc=Encoding.MINIMAL) -> None:
-
-        with open(CONFIG_FILE, "r") as f:
-            self.config = json.load(f)
+        self.config = Config(CONFIG_FILE)
         self.__puzzle_count: int = pc
-        self.__in_dir: str = f"{self.config['cacheDir']}{enc.name.lower()}/{test.lower()}"
+        self.__in_dir: str = (
+            f"{self.config['cacheDir']}{enc.name.lower()}/{test.lower()}"
+        )
         self.__work_dir: str = f"{self.config['cacheDir']}sat/{test.lower()}/"
         self.__table_rows: list = []
         self.params = {

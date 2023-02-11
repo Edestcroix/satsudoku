@@ -1,4 +1,3 @@
-import json
 import os
 from dataclasses import dataclass
 from typing import Tuple
@@ -7,16 +6,13 @@ from mdtable import TableMaker
 from satcoder import Encoding, encode
 
 from .satsolver import SatSolver
+from .conf import Config
 
 TestResult = Tuple[str, str, str, str, str, str]
 Averages = Tuple[str, str, str, str, str]
 
 
-CONFIG_FILE = f"{os.getcwd()}/sat_config.json"
-with open(CONFIG_FILE, "r") as f:
-    # don't need to reformat the puzzle sets
-    # because that part of the config is not used in this file
-    CONFIG = json.load(f)
+CONFIG = Config(f"{os.getcwd()}/sat_config.json")
 
 
 @dataclass

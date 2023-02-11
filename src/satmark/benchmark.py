@@ -1,5 +1,4 @@
 import argparse
-import json
 import os
 import shutil
 from typing import List
@@ -7,76 +6,27 @@ from typing import List
 from mdtable import RawTable, Table, TableMaker
 from satcoder import Encoding, decode
 
-from . import SatSolver, TestData, Tester, TestResult
-
-
-# should all this code be outside main? Maybe not, idk.
-# might do something about it later.
+from .conf import Config
+from .satsolver import SatSolver
+from .sattester import TestData, Tester, TestResult
 
 # check if minisat is installed somewhere in $PATH
 # if not, then the solver will not be able to run
-
 if not shutil.which("minisat"):
     print("Minisat not found in $PATH. Please install minisat.")
     exit()
 
-# this script needs information about the puzzle sets
-# to benchmark the solver on, which it expects to find in a config file
-# in the directory it is run from.
+# load the config file
 WORKING_DIR = os.getcwd()
 CONFIG_FILE = f"{WORKING_DIR}/sat_config.json"
-if not os.path.isfile(CONFIG_FILE):
-    print(f"Expected config {CONFIG_FILE} in working directory.")
-    print(f"{CONFIG_FILE} not found.")
-    exit()
-
-try:
-    with open(CONFIG_FILE, "r") as f:
-        CONFIG = json.load(f)
-except FileNotFoundError:
-    print(f"{CONFIG_FILE} not found.")
-    exit()
-else:
-    # reformat the puzzle sets for easier access later
-    # also because the code was written before the config file existed
-    # and reworking the code to use the config layout is more annoying
-    # than just reformatting the config here.
-    puzzle_sets = CONFIG["puzzleSets"]
-    for key in puzzle_sets:
-        puzzle_file = f"{CONFIG['puzzleDir']}{puzzle_sets[key]['file']}"
-        num_puzzles = puzzle_sets[key]['numPuzzles']
-        size = puzzle_sets[key]['size']
-        offset = puzzle_sets[key]['offset']
-        CONFIG["puzzleSets"][key] = (puzzle_file, num_puzzles, offset, size)
-
-
-def validate_working_dir():
-    # check if puzzleDir exits, and if so,
-    # check if the files specified in the config file exist
-    if not os.path.isdir(CONFIG["puzzleDir"]):
-        print(
-            f"Error: Puzzle directory './{CONFIG['puzzleDir']}' does not exist.")
-        exit()
-    else:
-        for key in CONFIG["puzzleSets"]:
-            if not os.path.isfile(CONFIG["puzzleSets"][key][0]):
-                print(
-                    f"Error: Puzzle file './{CONFIG['puzzleSets'][key][0]}' does not exist.")
-                exit()
+CONFIG = Config(f"{WORKING_DIR}/sat_config.json")
 
 
 def main():
-    # set up argument parser
-    # with argument flag -c
-    # which shows the CPU time for each puzzle
+    parser = argparse.ArgumentParser(description="Run tests on the sudoku solver")
 
-    validate_working_dir()
-
-    print(f"Using config file: {CONFIG_FILE}")
-
-    parser = argparse.ArgumentParser(
-        description="Run tests on the sudoku solver")
     args = setup_args(parser)
+
     if args.clean:
         shutil.rmtree(CONFIG["resultsDir"])
         exit(0)
@@ -87,11 +37,15 @@ def main():
     # (this way, can say do all tests, but don't summarize, instead of
     # having to specify all the other arguments except summarize)
     if args.All:
-        params = (True, not args.summarize, not args.keep,
-                  not args.decode, not args.markdown)
+        params = (
+            True,
+            not args.summarize,
+            not args.keep,
+            not args.decode,
+            not args.markdown,
+        )
     else:
-        params = (args.all, args.summarize, args.keep, args.decode,
-                  args.markdown)
+        params = (args.all, args.summarize, args.keep, args.decode, args.markdown)
 
     if params[1] and not params[0]:
         print("Error: -S must be used with -a")
@@ -101,6 +55,7 @@ def main():
     run_tests(args, params)
 
 
+# make the output directories if they don't exist
 def make_dirs() -> None:
     if os.path.isdir(CONFIG["cacheDir"]):
         shutil.rmtree(CONFIG["cacheDir"])
@@ -109,31 +64,54 @@ def make_dirs() -> None:
         os.mkdir(CONFIG["resultsDir"])
 
 
+# prepare the arguments for the script
 def setup_args(parser: argparse.ArgumentParser) -> argparse.Namespace:
-    parser.add_argument("-s", "--silent", action="store_true",)
+    parser.add_argument(
+        "-s",
+        "--silent",
+        action="store_true",
+    )
     # add argument flag -t to specify which test to run
     # default is to run all tests
-    parser.add_argument("-t", "--test", type=str, default="",
-                        help="test to run (standard, hard)")
-    parser.add_argument("-e", "--enc", type=str, default="",
-                        help="encoding to use (minimum, efficient, extended)")
-    parser.add_argument("-a", "--all", action="store_true",
-                        help="run all tests")
-    parser.add_argument("-k", "--keep", action="store_true",
-                        help="keep converted CNF files and solver output")
-    parser.add_argument("-S", "--summarize", action="store_true",
-                        help="summarize results from -a")
-    parser.add_argument("-d", "--decode", action="store_true",
-                        help="decode solved puzzles")
-    parser.add_argument("-A", "--All", action="store_true",
-                        help="run all tests with all options")
-    parser.add_argument("-c", "--clean", action="store_true",
-                        help="clean benchmark directory")
-    parser.add_argument("-m", "--markdown", action="store_true",
-                        help="output solutions in markdown format")
+    parser.add_argument(
+        "-t", "--test", type=str, default="", help="test to run (standard, hard)"
+    )
+    parser.add_argument(
+        "-e",
+        "--enc",
+        type=str,
+        default="",
+        help="encoding to use (minimum, efficient, extended)",
+    )
+    parser.add_argument("-a", "--all", action="store_true", help="run all tests")
+    parser.add_argument(
+        "-k",
+        "--keep",
+        action="store_true",
+        help="keep converted CNF files and solver output",
+    )
+    parser.add_argument(
+        "-S", "--summarize", action="store_true", help="summarize results from -a"
+    )
+    parser.add_argument(
+        "-d", "--decode", action="store_true", help="decode solved puzzles"
+    )
+    parser.add_argument(
+        "-A", "--All", action="store_true", help="run all tests with all options"
+    )
+    parser.add_argument(
+        "-c", "--clean", action="store_true", help="clean benchmark directory"
+    )
+    parser.add_argument(
+        "-m",
+        "--markdown",
+        action="store_true",
+        help="output solutions in markdown format",
+    )
     return parser.parse_args()
 
 
+# identify and run tests based on the arguments passed
 def run_tests(args: argparse.Namespace, params: tuple) -> None:
     all_tests, summary, keep, decode, markdown = params
     if all_tests:
@@ -163,15 +141,14 @@ def run_single_test(enc: str, test: str, silent: bool) -> None:
         print("Error: invalid encoding")
         exit(1)
 
-    puzzle_sets = CONFIG["puzzleSets"]
-
     out = f"{CONFIG['resultsDir']}test_results.md"
 
     test = test.capitalize() if test else CONFIG["defaultPuzzleSet"]
-    if test not in puzzle_sets:
+    if test not in CONFIG["puzzleSets"]:
         print("Error: invalid test")
         exit(1)
-    test_data = TestData(silent, test, encoding, *puzzle_sets[test])
+
+    test_data = TestData(silent, test, encoding, *CONFIG.puzzle_values(test))
     solver = SatSolver(test_data.num_puzzles, test, encoding)
     tester = Tester(test_data, solver)
     tester.test(out)
@@ -190,12 +167,11 @@ def copy_solution_dir(silent: bool) -> None:
         shutil.rmtree(f"{out_dir}solutions")
     shutil.move(f"{CONFIG['cacheDir']}solutions", out_dir)
 
-    print_if_not(
-        silent, f"Decoded solutions written to {out_dir}solutions")
+    print_if_not(silent, f"Decoded solutions written to {out_dir}solutions")
 
 
 def copy_working_dir(silent: bool) -> None:
-    # move contents cache dir to results dir
+    cache_dir = CONFIG["cacheDir"]
     out_dir = CONFIG["resultsDir"]
     # add trailing slash if not present
     if out_dir[-1] != "/":
@@ -203,22 +179,26 @@ def copy_working_dir(silent: bool) -> None:
 
     if not os.path.isdir(out_dir):
         os.mkdir(out_dir)
-    if os.path.isdir(f"{CONFIG['cacheDir']}fixed_cnf"):
-        shutil.rmtree(f"{CONFIG['cacheDir']}fixed_cnf")
-    if os.path.isdir(f"{out_dir}{CONFIG['cacheDir']}"):
-        shutil.rmtree(f"{out_dir}{CONFIG['cacheDir']}")
+    if os.path.isdir(f"{cache_dir}fixed_cnf"):
+        shutil.rmtree(f"{cache_dir}fixed_cnf")
+    if os.path.isdir(f"{out_dir}{cache_dir}"):
+        shutil.rmtree(f"{out_dir}{cache_dir}")
     try:
-        shutil.move(CONFIG["cacheDir"], out_dir)
+        shutil.move(cache_dir, out_dir)
     except Exception as e:
-        print_if_not(silent, "Failed to move CNF files and solver output to " +
-                     out_dir+"encodings")
+        print_if_not(
+            silent,
+            f"Failed to move CNF files and solver output to {out_dir}encodings",
+        )
         print_if_not(silent, str(e))
     else:
         if os.path.isdir(f"{out_dir}encodings"):
             shutil.rmtree(f"{out_dir}encodings")
-        os.rename(f"{out_dir}{CONFIG['cacheDir']}", f"{out_dir}encodings")
-        print_if_not(silent, "Converted CNF files and solver output saved to " +
-                     out_dir+"encodings")
+        os.rename(f"{out_dir}{cache_dir}", f"{out_dir}encodings")
+        print_if_not(
+            silent,
+            f"Converted CNF files and solver output saved to {out_dir}encodings",
+        )
 
 
 def summarize(results: RawTable, puzzle_sets) -> None:
@@ -229,8 +209,15 @@ def summarize(results: RawTable, puzzle_sets) -> None:
 
     def header_func(x):
         return f"Averages ― {tuple(puzzle_sets.keys())[x-1]} Puzzles"
-    cols = ["Encoding", "Decisions", "Decision Rate (dcsns/sec)",
-            "Propositions", "Proposition Rate (props/sec)", "CPU Time (seconds)"]
+
+    cols = [
+        "Encoding",
+        "Decisions",
+        "Decision Rate (dcsns/sec)",
+        "Propositions",
+        "Proposition Rate (props/sec)",
+        "CPU Time (seconds)",
+    ]
     with open(sum_file, "w") as f:
         maker = TableMaker(sep_every=3, sep_func=header_func, new_line=False)
         f.write(maker.table("Results Summary", results, cols))
@@ -238,7 +225,6 @@ def summarize(results: RawTable, puzzle_sets) -> None:
 
 def test_all(summary: bool = False, silent: bool = False) -> None:
     out = CONFIG["resultsDir"]
-    puzzle_sets = CONFIG["puzzleSets"]
     msg: str = "Testing {0} puzzles with {1} encoding..."
     print_if_not(silent, f"Running all tests, outputting to {out}")
     print_if_not(silent, "This may take a while...")
@@ -248,10 +234,11 @@ def test_all(summary: bool = False, silent: bool = False) -> None:
     i: int = 1
 
     # iterates through all test puzzle files and all encodings
-    for test in puzzle_sets.keys():
+    for test in CONFIG["puzzleSets"]:
         # update tester parameters when switching tests
         tester.update_params(
-            TestData(True, test, Encoding.MINIMAL, *puzzle_sets[test]))
+            TestData(True, test, Encoding.MINIMAL, *CONFIG.puzzle_values(test))
+        )
         for enc in Encoding:
             name: str = enc.name.lower()
             t: str = test.lower()
@@ -264,13 +251,13 @@ def test_all(summary: bool = False, silent: bool = False) -> None:
 
     print_if_not(silent, "Done!")
     if summary:
-        summarize(results, puzzle_sets)
+        summarize(results, CONFIG["puzzleSets"].keys())
         print_if_not(silent, f"Summary saved to {out}summary.md")
 
 
 def decode_solutions(markdown: bool) -> None:
     # decode solutions from minisat output
-    for test in CONFIG["puzzleSets"].keys():
+    for test in CONFIG["puzzleSets"]:
         test = test.lower()
         in_dir = f"{CONFIG['cacheDir']}sat/{test}/"
         if os.path.exists(in_dir):
@@ -291,8 +278,7 @@ def decode_dir(out_dir: str, in_dir: str, markdown: bool) -> None:
 
             outfile = f"{CONFIG['cacheDir']}{out_dir}sudoku_{str(i + 1).zfill(2)}"
             if markdown:
-                output = sudoku_to_table(
-                    decoded, f"Solution {str(i+1).zfill(2)}")
+                output = sudoku_to_table(decoded, f"Solution {str(i+1).zfill(2)}")
                 outfile += ".md"
             else:
                 output = decoded
