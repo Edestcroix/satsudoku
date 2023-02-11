@@ -1,4 +1,3 @@
-
 # decodes the CNF assignment output from miniSAT
 # and returns the solved sudoku puzzle as a string
 def decode(cnf: str) -> str:

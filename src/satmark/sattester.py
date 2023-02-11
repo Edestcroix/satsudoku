@@ -29,7 +29,7 @@ class TestData:
 class Tester:
     def __init__(self, test_info=None, solver=None, silent=False):
         if test_info is None:
-            default_set = CONFIG['defaultPuzzleSet']
+            default_set = CONFIG["defaultPuzzleSet"]
             default = CONFIG["puzzleSets"][default_set]
             test_info = TestData(
                 silent,
@@ -38,10 +38,12 @@ class Tester:
                 puzzles_dir=default["file"],
                 num_puzzles=default["numPuzzles"],
                 size=default["size"],
-                offset=default["offset"])
+                offset=default["offset"],
+            )
         if solver is None:
-            solver = SatSolver(pc=test_info.num_puzzles,
-                               test=test_info.test_type, enc=test_info.enc)
+            solver = SatSolver(
+                pc=test_info.num_puzzles, test=test_info.test_type, enc=test_info.enc
+            )
         self.__p: TestData = test_info
         self.solver: SatSolver = solver
         self.__update_working_dir(test_info.enc, test_info.test_type)
@@ -52,7 +54,8 @@ class Tester:
     def update_params(self, test_info: TestData):
         self.__p = test_info
         self.solver.update_parameters(
-            test=test_info.test_type, enc=test_info.enc, pc=test_info.num_puzzles)
+            test=test_info.test_type, enc=test_info.enc, pc=test_info.num_puzzles
+        )
         self.__update_working_dir(test_info.enc, test_info.test_type)
 
     def update_encoding(self, enc: Encoding):
@@ -70,7 +73,7 @@ class Tester:
         averages, table_rows = self.solver.solve()
 
         self.__output_results(table_rows, out_dir)
-        return (self.__p.enc.name.capitalize(), ) + averages
+        return (self.__p.enc.name.capitalize(),) + averages
 
     def __encode_puzzles(self, working_dir):
         enc = self.__p.enc
@@ -78,8 +81,7 @@ class Tester:
             for i in range(self.__p.num_puzzles):
                 for _ in range(self.__p.offset):
                     f.readline()
-                puzzle = "".join(f.readline()
-                                 for _ in range(self.__p.size))
+                puzzle = "".join(f.readline() for _ in range(self.__p.size))
                 # set write to true, so fixed cnf is cached
                 cnf = encode(puzzle, enc, True)
                 out_file = f"{working_dir}/sudoku_{str(i+1).zfill(2)}.cnf"
@@ -92,24 +94,34 @@ class Tester:
         # after this, one more table will be added for the averages,
         # so once i passes c, the header will be changed to "Averages".
         def header_func(i):
-            return f"Test {str(i).zfill(2)}" if i <= self.__p.num_puzzles else "Averages"
+            return (
+                f"Test {str(i).zfill(2)}" if i <= self.__p.num_puzzles else "Averages"
+            )
 
         if table_rows != []:
-            cols = ("Decisions", "Decision Rate", "Propagations",
-                    "Propagation Rate", "CPU Time")
-            title = f"{self.__p.test_type} Test ({self.__p.enc.name.capitalize()} Encoding)"
+            cols = (
+                "Decisions",
+                "Decision Rate",
+                "Propagations",
+                "Propagation Rate",
+                "CPU Time",
+            )
+            title = (
+                f"{self.__p.test_type} Test ({self.__p.enc.name.capitalize()} Encoding)"
+            )
 
-            maker = TableMaker(sep_every=1, new_line=False,
-                               sep_func=header_func)
+            maker = TableMaker(sep_every=1, new_line=False, sep_func=header_func)
 
             table = maker.table(title, table_rows, cols)
 
             self.__print(table)
 
             if out_dir != "":
-                out_dir = out_dir \
-                    if out_dir[-4:] == ".txt" or out_dir[-3:] == ".md"\
+                out_dir = (
+                    out_dir
+                    if out_dir[-4:] == ".txt" or out_dir[-3:] == ".md"
                     else f"{out_dir}test_results.md"
+                )
 
                 with open(out_dir, "w") as outfile:
                     outfile.write(table)

@@ -1,6 +1,6 @@
 from typing import List, Tuple, TypeVar
 
-RawTable = List[TypeVar('Row', List, Tuple)]
+RawTable = List[TypeVar("Row", List, Tuple)]
 Table = str
 
 
@@ -26,8 +26,7 @@ class TableMaker:
     def table(self, title, rows: RawTable, col_titles=None) -> Table:
         # find the longest string in each column
         col_widths = (
-            [max(len(str(x)) for x in col)
-             for col in zip(*rows + [col_titles])]
+            [max(len(str(x)) for x in col) for col in zip(*rows + [col_titles])]
             if col_titles is not None
             else [max(len(str(x)) for x in col) for col in zip(*rows)]
         )
@@ -38,13 +37,17 @@ class TableMaker:
         for i, row in enumerate(rows):
             if self.sep and i % self.sep_every == 0:
                 sep_count += 1
-                out += self.__table_sep(sep_count, self.sep_func,
-                                        sep_line, col_widths, col_titles)
+                out += self.__table_sep(
+                    sep_count, self.sep_func, sep_line, col_widths, col_titles
+                )
             elif not self.sep and i == 1:
                 out += sep_line
 
-            out += "| " + " | ".join((str(x).ljust(col_widths[j])
-                                      for j, x in enumerate(row))) + " |\n"
+            out += (
+                "| "
+                + " | ".join((str(x).ljust(col_widths[j]) for j, x in enumerate(row)))
+                + " |\n"
+            )
 
         if self.new_line:
             out += "\n"
@@ -62,16 +65,20 @@ class TableMaker:
             head = sep_func(sep_count)
 
             sep_header = (
-                f"## {head.ljust(sum(col_widths) + 3 * (len(col_widths) - 1))}"
-                + "\n\n"
+                f"## {head.ljust(sum(col_widths) + 3 * (len(col_widths) - 1))}" + "\n\n"
             )
-            out += "\n"+sep_header if sep_count > 1 else sep_header
+            out += "\n" + sep_header if sep_count > 1 else sep_header
         # if there are no column titles, and no separator function
         # a separator line needs to be printed
         if sep_func is None:
             out += sep_line
 
-        out += "| " + " | ".join((str(x).ljust(col_widths[j])
-                                  for j, x in enumerate(col_titles))) + " |\n"
+        out += (
+            "| "
+            + " | ".join(
+                (str(x).ljust(col_widths[j]) for j, x in enumerate(col_titles))
+            )
+            + " |\n"
+        )
         out += sep_line
         return out

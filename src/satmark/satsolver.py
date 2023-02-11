@@ -29,7 +29,7 @@ class SatSolver:
             self.__DECISION_RATE: [],
             self.__PROPS: [],
             self.__PROP_RATE: [],
-            self.__TIME: []
+            self.__TIME: [],
         }
 
     # Update the testing environment with new parameters
@@ -39,7 +39,9 @@ class SatSolver:
             self.__work_dir = f"{self.config['cacheDir']}sat/{test.lower()}/"
         if enc:
             test = test or self.__work_dir.split("/")[-2]
-            self.__in_dir = f"{self.config['cacheDir']}{enc.name.lower()}/{test.lower()}"
+            self.__in_dir = (
+                f"{self.config['cacheDir']}{enc.name.lower()}/{test.lower()}"
+            )
         if pc:
             self.__puzzle_count = pc
 
@@ -60,8 +62,7 @@ class SatSolver:
             self.params[key] = []
 
     def __get_data(self, data):
-        decision, _, decision_rate = re.findall(
-            r"[-+]?\d*\.\d+|\d+", data[0])[:3]
+        decision, _, decision_rate = re.findall(r"[-+]?\d*\.\d+|\d+", data[0])[:3]
         self.params[self.__DECISIONS].append(decision)
         self.params[self.__DECISION_RATE].append(decision_rate)
         decision_rate = f"{decision_rate} decisions/sec"
@@ -75,8 +76,13 @@ class SatSolver:
         cpu = data[2].split(":")
         self.params[self.__TIME].append(cpu[1].strip().replace(" s", ""))
 
-        return (decision.strip(), decision_rate.strip(),
-                prop.strip(), p_rate, cpu[1].strip())
+        return (
+            decision.strip(),
+            decision_rate.strip(),
+            prop.strip(),
+            p_rate,
+            cpu[1].strip(),
+        )
 
     def __solve_puzzle(self, i):
         filename = f"{self.__in_dir}/sudoku_{str(i + 1).zfill(2)}.cnf"
@@ -84,27 +90,32 @@ class SatSolver:
         minisat = f"minisat {filename} {outfile}"
 
         # get output from minisat
-        output = subprocess.Popen(minisat, shell=True,
-                                  stdout=subprocess.PIPE).communicate()[0]
+        output = subprocess.Popen(
+            minisat, shell=True, stdout=subprocess.PIPE
+        ).communicate()[0]
 
         output = output.decode("utf-8").split("\n")
 
-        def want_line(
-            l): return "CPU time" in l or "propagations" in l or "decisions" in l
+        def want_line(l):
+            return "CPU time" in l or "propagations" in l or "decisions" in l
 
         data = tuple(line for line in output if want_line(line))
 
         self.__table_rows.append(self.__get_data(data))
 
     def __compute_averages(self) -> Averages:
-        def av(x: List[str], r: int) -> str: return str(round(sum(float(x)
-                                                                  for x in x) / len(x), r))
+        def av(x: List[str], r: int) -> str:
+            return str(round(sum(float(x) for x in x) / len(x), r))
+
         lists: List[list] = list(self.params.values())
         times: list = self.params[self.__TIME]
-        av_time: str = av(times, self.config['round']+2)
-        averages: list = [av(test_results, self.config['round'])
-                          for test_results in lists[:-1]] + [av_time]
-        averages[self.__DECISION_RATE] = f"{averages[self.__DECISION_RATE]} decisions/sec"
+        av_time: str = av(times, self.config["round"] + 2)
+        averages: list = [
+            av(test_results, self.config["round"]) for test_results in lists[:-1]
+        ] + [av_time]
+        averages[
+            self.__DECISION_RATE
+        ] = f"{averages[self.__DECISION_RATE]} decisions/sec"
         averages[self.__PROP_RATE] = f"{averages[self.__PROP_RATE]} props/sec"
         averages[self.__TIME] = f"{av_time} s"
         self.__table_rows.append(tuple(averages))

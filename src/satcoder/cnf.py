@@ -35,8 +35,14 @@ def encode(sudoku: str, encoding=Encoding.MINIMAL, cache=False) -> str:
 
 
 def __getSeparator(sudoku: str) -> str:
-    return next((sudoku[i] for i in range(len(sudoku)) if
-                 not sudoku[i].isdigit() or sudoku[i] == "0"), "",)
+    return next(
+        (
+            sudoku[i]
+            for i in range(len(sudoku))
+            if not sudoku[i].isdigit() or sudoku[i] == "0"
+        ),
+        "",
+    )
 
 
 def __parse(sudoku: str) -> Tuple[list, int]:
@@ -48,9 +54,9 @@ def __parse(sudoku: str) -> Tuple[list, int]:
     separator = __getSeparator(sudoku)
     # split sudoku into chunks of 9
     for row, column in itertools.product(range(9), range(9)):
-        cell = sudoku[(9*row)+column]
+        cell = sudoku[(9 * row) + column]
         if cell != separator:
-            sudoku_list.append(__enc(row+1, column+1, int(cell)))
+            sudoku_list.append(__enc(row + 1, column + 1, int(cell)))
             count += 1
 
     return (sudoku_list, count)
@@ -61,11 +67,13 @@ def __enc(row: int, column: int, value: int) -> str:
     # first digit is the row, second is the column, third is the value
     # store as int
     # print("value is: " + str(value) + " at: " + str(row), str(column))
-    cell = (81 * (row-1)) + (9 * (column-1)) + (value-1) + 1
+    cell = (81 * (row - 1)) + (9 * (column - 1)) + (value - 1) + 1
     return str(cell)
 
 
-def __create_cnf(sudoku_list: list, count: int, encoding=Encoding.MINIMAL, cache=False) -> str:
+def __create_cnf(
+    sudoku_list: list, count: int, encoding=Encoding.MINIMAL, cache=False
+) -> str:
     filename = f"{ENC_DIR}sudoku_rules_{encoding.name.lower()}.cnf"
 
     # if cache is true, cache fixed cnf in a file in the cwd so it can be reused
@@ -104,11 +112,11 @@ def __fixed_cnf(encoding=Encoding.MINIMAL) -> tuple:
     header = ""
     match encoding:
         case Encoding.MINIMAL:
-            header = 'p cnf 729 8829\n'
+            header = "p cnf 729 8829\n"
         case Encoding.EFFICIENT:
-            header = 'p cnf 729 11745\n'
+            header = "p cnf 729 11745\n"
         case Encoding.EXTENDED:
-            header = 'p cnf 729 11988\n'
+            header = "p cnf 729 11988\n"
 
     cnf = __cell_one_number()
 
@@ -127,6 +135,7 @@ def __fixed_cnf(encoding=Encoding.MINIMAL) -> tuple:
 
     return header, cnf
 
+
 # Below Lies The Land Of Nested For Loops
 # (seriously, this is a lot of for loops, thank the flying
 # spaghetti monster for itertools.product)
@@ -141,37 +150,47 @@ def __cell_one_number() -> str:
     return cnf
 
 
-def __num_once_in_row(file=None) -> str:
+def __num_once_in_row() -> str:
     cnf = ""
     for y, z, x in itertools.product(range(1, 10), range(1, 10), range(1, 10)):
-        for i in range((x+1), 10):
+        for i in range((x + 1), 10):
             cnf += f"-{str(__enc(x, y, z))} -{str(__enc(i, y, z))}" + " 0\n"
     return cnf
 
 
-def __num_once_in_column(file=None) -> str:
+def __num_once_in_column() -> str:
     cnf = ""
     for x, z, y in itertools.product(range(1, 10), range(1, 10), range(1, 10)):
-        for i in range((y+1), 10):
+        for i in range((y + 1), 10):
             cnf += f"-{str(__enc(x, y, z))} -{str(__enc(x, i, z))}" + " 0\n"
     return cnf
 
 
-def __num_once_in_box(file=None) -> str:
+def __num_once_in_box() -> str:
     cnf = ""
-    for z, i, j, x, y in itertools.product(range(1, 10), range(3), range(3), range(1, 4), range(1, 4)):
-        for k in range((y+1), 4):
-            cnf += f"-{str(__enc(3 * i + x, 3 * j + y, z))} -{str(__enc(3 * i + x, 3 * j + k, z))}" + " 0\n"
-    for z, i, j, x, y in itertools.product(range(1, 10), range(3), range(3), range(1, 4), range(1, 4)):
-        for k, l in itertools.product(range((x+1), 4), range(1, 4)):
-            cnf += f"-{str(__enc(3 * i + x, 3 * j + y, z))} -{str(__enc(3 * i + k, 3 * j + l, z))}" + " 0\n"
+    for z, i, j, x, y in itertools.product(
+        range(1, 10), range(3), range(3), range(1, 4), range(1, 4)
+    ):
+        for k in range((y + 1), 4):
+            cnf += (
+                f"-{str(__enc(3 * i + x, 3 * j + y, z))} -{str(__enc(3 * i + x, 3 * j + k, z))}"
+                + " 0\n"
+            )
+    for z, i, j, x, y in itertools.product(
+        range(1, 10), range(3), range(3), range(1, 4), range(1, 4)
+    ):
+        for k, l in itertools.product(range((x + 1), 4), range(1, 4)):
+            cnf += (
+                f"-{str(__enc(3 * i + x, 3 * j + y, z))} -{str(__enc(3 * i + k, 3 * j + l, z))}"
+                + " 0\n"
+            )
     return cnf
 
 
 def __exactly_one_number() -> str:
     cnf = ""
     for i, j, k in itertools.product(range(1, 10), range(1, 10), range(1, 10)):
-        for l in range((k+1), 10):
+        for l in range((k + 1), 10):
             cnf += f"-{str(__enc(i, j, k))} -{str(__enc(i, j, l))}" + " 0\n"
     return cnf
 
