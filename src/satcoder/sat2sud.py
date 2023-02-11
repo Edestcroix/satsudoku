@@ -6,9 +6,10 @@ from . import decode
 
 def main():
     try:
+        fileinput.filename()
         # get the sudoku from stdin
         sudoku = "".join(list(fileinput.input())[1:])
-    except FileNotFoundError:
+    except (FileNotFoundError, RuntimeError):
         # get from arguments if no input is given
         sudoku = " ".join(sys.argv[1:])
 
