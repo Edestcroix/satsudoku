@@ -1,22 +1,9 @@
 
 # TODO:
-- rework the config parser to be universal and uniform across the benchmark files.
-  right now it's a bit screwy. Might be good to use a library for this, or create
-  a config manager class that can be used in all the scripts, which loads config on
-  instantiation and provides methods to get the data from the config.
-  Right now, if a config file isn't found the whole program just crashes on module import,
-  because each module re-loads the config file. If the config was loaded in a class, a missing
-  config would be detected on class instantiation and the program could exit gracefully.
-
-- **Where do the CNF encodings go??** The CNF encoder in satcoder outputs CNF encodings to a file *somewhere* when it 
- is called. I have no idea where they go when this is packaged. Before it just output to the source tree.
- The overhead of generating the CNF encodings doesn't seem to be that bad, so could just generate them
- on the fly instead of caching them. (Just figured it out, they are generated in the working directory. Still, 
- they probably shouldn't go there.) Current plan is to stick them into `.encs` or something in the working dir and delete them after,
- or `~/.cache` and leave them there. Maybe have the encoder function take a parameter to specify whether to cache the encodings or not,
- that way, when sud2sat is called on a sinlge puzzle, it can be told not to cache the encodings, but when it's called by the benchmark
- script, which has to encode a lot of puzzles, it can be told to cache the encodings, and then it is the onus of the benchmark script
-  to delete the encodings after it's done with them.
+  
+- add option in config to timestamp output directory/output file, so new tests don't overwrite old ones.
+  
+- finalize packaging requirements
 
 
 # Finished (Mostly)
@@ -26,6 +13,7 @@ needs to be reworked to find data files and config files outside of
 the source tree.
 
 to get this working, will need:
+- 
 - **a new way of finding puzzle sets**, currently they are specified in a config file
   relative to the source tree, but this needs to be changed. It could be as simple as
   changing puzzleDir in the config.
@@ -46,3 +34,21 @@ to get this working, will need:
   some way of providing defaults. This could tie into the idea above of having tests and config
   being required in the directory the script is called from.
   
+
+- **Where do the CNF encodings go??** The CNF encoder in satcoder outputs CNF encodings to a file *somewhere* when it 
+ is called. I have no idea where they go when this is packaged. Before it just output to the source tree.
+ The overhead of generating the CNF encodings doesn't seem to be that bad, so could just generate them
+ on the fly instead of caching them. (Just figured it out, they are generated in the working directory. Still, 
+ they probably shouldn't go there.) Current plan is to stick them into `.encs` or something in the working dir and delete them after,
+ or `~/.cache` and leave them there. Maybe have the encoder function take a parameter to specify whether to cache the encodings or not,
+ that way, when sud2sat is called on a sinlge puzzle, it can be told not to cache the encodings, but when it's called by the benchmark
+ script, which has to encode a lot of puzzles, it can be told to cache the encodings, and then it is the onus of the benchmark script
+  to delete the encodings after it's done with them.
+
+- rework the config parser to be universal and uniform across the benchmark files.
+  right now it's a bit screwy. Might be good to use a library for this, or create
+  a config manager class that can be used in all the scripts, which loads config on
+  instantiation and provides methods to get the data from the config.
+  Right now, if a config file isn't found the whole program just crashes on module import,
+  because each module re-loads the config file. If the config was loaded in a class, a missing
+  config would be detected on class instantiation and the program could exit gracefully.
