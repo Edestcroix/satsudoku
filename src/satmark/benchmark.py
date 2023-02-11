@@ -208,7 +208,7 @@ def summarize(results: RawTable, puzzle_sets) -> None:
     # and the summary will automatically update
 
     def header_func(x):
-        return f"Averages ― {tuple(puzzle_sets.keys())[x-1]} Puzzles"
+        return f"Averages ― {puzzle_sets[x-1]} Puzzles"
 
     cols = [
         "Encoding",
@@ -251,7 +251,7 @@ def test_all(summary: bool = False, silent: bool = False) -> None:
 
     print_if_not(silent, "Done!")
     if summary:
-        summarize(results, CONFIG["puzzleSets"].keys())
+        summarize(results, tuple(CONFIG["puzzleSets"].keys()))
         print_if_not(silent, f"Summary saved to {out}summary.md")
 
 
