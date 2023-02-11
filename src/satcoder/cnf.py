@@ -2,7 +2,7 @@ import itertools
 import os
 import re
 from enum import Enum
-from typing import IO, TextIO, Tuple, Union
+from typing import Tuple
 
 
 # sudoku puzzles can be encoded into CNF in 3 different ways,
@@ -17,18 +17,12 @@ class Encoding(Enum):
     EXTENDED = 2
 
 
-# if the CNF is set to be cached, this is the directory it will be cached in.
-# this is relative to the working directory, and is a subdirectory of the
-# .cache so that this file and the benchmarking script can share the same cache
-# dir, and the benchmarking script can easily delete the cache after running
-ENC_DIR = ".cache/fixed_cnf/"
-
 # given a sudoku string,
 # returns the CNF encoding of the sudoku as a string
 # these string are VERY large, as CNF is a very verbose format
-
-
-def encode(sudoku: str, encoding=Encoding.MINIMAL, cache=False) -> str:
+# if cache is not None, the fixed CNF will be written to a file
+# in that directory, and reused if it already exists.
+def encode(sudoku: str, encoding=Encoding.MINIMAL, cache=None) -> str:
     # parse the sudoku string
     sudoku_list, count = __parse(sudoku)
     return __create_cnf(sudoku_list, count, encoding, cache)
@@ -72,14 +66,14 @@ def __enc(row: int, column: int, value: int) -> str:
 
 
 def __create_cnf(
-    sudoku_list: list, count: int, encoding=Encoding.MINIMAL, cache=False
+    sudoku_list: list, count: int, encoding=Encoding.MINIMAL, cache_in=None
 ) -> str:
-    filename = f"{ENC_DIR}sudoku_rules_{encoding.name.lower()}.cnf"
+    filename = f"{cache_in}sudoku_rules_{encoding.name.lower()}.cnf"
 
     # if cache is true, cache fixed cnf in a file in the cwd so it can be reused
-    if cache:
+    if cache_in:
         if not os.path.exists(filename):
-            mkdir = f"mkdir -p {ENC_DIR}"
+            mkdir = f"mkdir -p {cache_in}"
             os.system(mkdir)
             with open(filename, "w") as file:
                 header, cnf = __fixed_cnf(encoding)
