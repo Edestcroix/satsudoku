@@ -102,7 +102,7 @@ see `example_config.json` for an example config file.
 Tests can be defined by adding a new entry to the `puzzleSets` object in `sat_config.json` and a new file containing the puzzles to be used in the specified `puzzleDir`.
 A puzzle entry is of the following format:
 ```
-"test_name": {
+"set_name": {
     "file": "path/to/puzzle/file",
     "numPuzzles": 100,
     "size": 9,
