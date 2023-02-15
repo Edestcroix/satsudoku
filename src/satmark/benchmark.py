@@ -148,75 +148,6 @@ def run_tests(all_tests, silent, summary, enc, test) -> None:
         run_tester(tester, out=out)
 
 
-def print_if_not(b: bool, str: str) -> None:
-    None if b else print(str)
-
-
-def copy_solution_dir(silent: bool) -> None:
-    out_dir: str = CONFIG["resultsDir"]
-    # add trailing slash if not present
-    if out_dir[-1] != "/":
-        out_dir += "/"
-    if os.path.isdir(f"{out_dir}solutions"):
-        shutil.rmtree(f"{out_dir}solutions")
-    shutil.move(f"{CONFIG['cacheDir']}solutions", out_dir)
-
-    print_if_not(silent, f"Decoded solutions written to {out_dir}solutions")
-
-
-def copy_working_dir(silent: bool) -> None:
-    cache_dir = CONFIG["cacheDir"]
-    out_dir = CONFIG["resultsDir"]
-    # add trailing slash if not present
-    if out_dir[-1] != "/":
-        out_dir += "/"
-
-    if not os.path.isdir(out_dir):
-        os.mkdir(out_dir)
-    if os.path.isdir(f"{cache_dir}fixed_cnf"):
-        shutil.rmtree(f"{cache_dir}fixed_cnf")
-    if os.path.isdir(f"{out_dir}{cache_dir}"):
-        shutil.rmtree(f"{out_dir}{cache_dir}")
-    try:
-        shutil.move(cache_dir, out_dir)
-    except Exception as e:
-        print_if_not(
-            silent,
-            f"Failed to move CNF files and solver output to {out_dir}encodings",
-        )
-        print_if_not(silent, str(e))
-    else:
-        if os.path.isdir(f"{out_dir}encodings"):
-            shutil.rmtree(f"{out_dir}encodings")
-        os.rename(f"{out_dir}{cache_dir}", f"{out_dir}encodings")
-        print_if_not(
-            silent,
-            f"Converted CNF files and solver output saved to {out_dir}encodings",
-        )
-
-
-def summarize(results: RawTable, puzzle_sets) -> None:
-    sum_file = f"{CONFIG['resultsDir']}summary.md"
-    # header is generated from the keys of the puzzles dict,
-    # this allows for easy addition of tests with new puzzles
-    # and the summary will automatically update
-
-    def header_func(x):
-        return f"Averages ― {puzzle_sets[x-1]} Puzzles"
-
-    cols = [
-        "Encoding",
-        "Decisions",
-        "Decision Rate (dcsns/sec)",
-        "Propositions",
-        "Proposition Rate (props/sec)",
-        "CPU Time (seconds)",
-    ]
-    with open(sum_file, "w") as f:
-        maker = TableMaker(sep_every=3, sep_func=header_func, new_line=False)
-        f.write(maker.table("Results Summary", results, cols))
-
-
 # run all tests and output results to a markdown file, optionally summarize
 # results from all tests. Tests are run in parallel using a pool of processes.
 def test_all(summary: bool = False, silent: bool = False) -> None:
@@ -264,6 +195,75 @@ def run_tester(tester, out=None) -> List[TestResult]:
             tester.test(f"{out}{tester.test_name().lower()}-{enc.name.lower()}.md")
         )
     return result
+
+
+def summarize(results: RawTable, puzzle_sets) -> None:
+    sum_file = f"{CONFIG['resultsDir']}summary.md"
+    # header is generated from the keys of the puzzles dict,
+    # this allows for easy addition of tests with new puzzles
+    # and the summary will automatically update
+
+    def header_func(x):
+        return f"Averages ― {puzzle_sets[x-1]} Puzzles"
+
+    cols = [
+        "Encoding",
+        "Decisions",
+        "Decision Rate (dcsns/sec)",
+        "Propositions",
+        "Proposition Rate (props/sec)",
+        "CPU Time (seconds)",
+    ]
+    with open(sum_file, "w") as f:
+        maker = TableMaker(sep_every=3, sep_func=header_func, new_line=False)
+        f.write(maker.table("Results Summary", results, cols))
+
+
+def print_if_not(b: bool, str: str) -> None:
+    None if b else print(str)
+
+
+def copy_solution_dir(silent: bool) -> None:
+    out_dir: str = CONFIG["resultsDir"]
+    # add trailing slash if not present
+    if out_dir[-1] != "/":
+        out_dir += "/"
+    if os.path.isdir(f"{out_dir}solutions"):
+        shutil.rmtree(f"{out_dir}solutions")
+    shutil.move(f"{CONFIG['cacheDir']}solutions", out_dir)
+
+    print_if_not(silent, f"Decoded solutions written to {out_dir}solutions")
+
+
+def copy_working_dir(silent: bool) -> None:
+    cache_dir = CONFIG["cacheDir"]
+    out_dir = CONFIG["resultsDir"]
+    # add trailing slash if not present
+    if out_dir[-1] != "/":
+        out_dir += "/"
+
+    if not os.path.isdir(out_dir):
+        os.mkdir(out_dir)
+    if os.path.isdir(f"{cache_dir}fixed_cnf"):
+        shutil.rmtree(f"{cache_dir}fixed_cnf")
+    if os.path.isdir(f"{out_dir}{cache_dir}"):
+        shutil.rmtree(f"{out_dir}{cache_dir}")
+    try:
+        shutil.move(cache_dir, out_dir)
+    except Exception as e:
+        print_if_not(
+            silent,
+            f"Failed to move CNF files and solver output to {out_dir}encodings",
+        )
+        print_if_not(silent, str(e))
+    else:
+        if os.path.isdir(f"{out_dir}encodings"):
+            shutil.rmtree(f"{out_dir}encodings")
+        os.rename(f"{out_dir}{cache_dir}", f"{out_dir}encodings")
+        print_if_not(
+            silent,
+            f"Converted CNF files and solver output saved to {out_dir}encodings",
+        )
 
 
 def decode_solutions(markdown: bool) -> None:
