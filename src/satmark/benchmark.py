@@ -1,13 +1,13 @@
 import argparse
 import os
 import shutil
+from multiprocessing import Pool
 from typing import List
 
 from mdtable import RawTable, Table, TableMaker
 from satcoder import Encoding, decode
 
 from .conf import Config
-from .satsolver import SatSolver
 from .sattester import TestData, Tester, TestResult
 
 # check if minisat is installed somewhere in $PATH
@@ -32,27 +32,42 @@ def main():
         exit(0)
 
     # if args.All is true, then flip the values of all the other
-    # arguments to their opposite. This way, if -C is specified, the actions of
+    # arguments to their opposite. This way, if -A is specified, the actions of
     # all other arguments are performed, unless they are also specified.
     # (this way, can say do all tests, but don't summarize, instead of
     # having to specify all the other arguments except summarize)
     if args.All:
-        params = (
-            True,
-            not args.summarize,
-            not args.keep,
-            not args.decode,
-            not args.markdown,
-        )
+        all_tests = True
+        summarize = not args.summarize
+        keep = not args.keep
+        decode = not args.decode
+        markdown = not args.markdown
     else:
-        params = (args.all, args.summarize, args.keep, args.decode, args.markdown)
+        all_tests = args.all
+        summarize = args.summarize
+        keep = args.keep
+        decode = args.decode
+        markdown = args.markdown
 
-    if params[1] and not params[0]:
+    if summarize and not all_tests:
         print("Error: -S must be used with -a")
         exit(1)
 
     make_dirs()
-    run_tests(args, params)
+
+    if args.all and (args.test != "" or args.enc != ""):
+        print("Error: -a/-C cannot be used with flags other -s")
+        return
+
+    run_tests(all_tests, args.silent, summarize, args.enc, args.test)
+
+    if decode:
+        decode_solutions(markdown)
+        copy_solution_dir(args.silent)
+    if keep:
+        copy_working_dir(args.silent)
+    else:
+        shutil.rmtree(CONFIG["cacheDir"])
 
 
 # make the output directories if they don't exist
@@ -112,46 +127,25 @@ def setup_args(parser: argparse.ArgumentParser) -> argparse.Namespace:
 
 
 # identify and run tests based on the arguments passed
-def run_tests(args: argparse.Namespace, params: tuple) -> None:
-    all_tests, summary, keep, decode, markdown = params
+def run_tests(all_tests, silent, summary, enc, test) -> None:
     if all_tests:
-        # fail if -t or -e specified with -a
-        if args.test != "" or args.enc != "":
-            print("Error: -a/-C cannot be used with flags other -s")
-            return
-        test_all(summary, args.silent)
+        test_all(summary, silent)
     else:
-        run_single_test(args.enc, args.test, args.silent)
+        if not enc:
+            encoding = Encoding.MINIMAL
+        elif enc in {"minimal", "efficient", "extended"}:
+            encoding = Encoding[enc.upper()]
+        else:
+            print("Error: invalid encoding")
+            exit(1)
+        test = test.capitalize() if test else CONFIG["defaultPuzzleSet"]
+        tester = Tester()
+        tester.update_params(
+            TestData(silent, test, encoding, *CONFIG.puzzle_values(test))
+        )
 
-    if decode:
-        decode_solutions(markdown)
-        copy_solution_dir(args.silent)
-    if keep:
-        copy_working_dir(args.silent)
-    else:
-        shutil.rmtree(CONFIG["cacheDir"])
-
-
-def run_single_test(enc: str, test: str, silent: bool) -> None:
-    if enc in {"minimal", "efficient", "extended"}:
-        encoding = Encoding[enc.upper()]
-    elif not enc:
-        encoding = Encoding.MINIMAL
-    else:
-        print("Error: invalid encoding")
-        exit(1)
-
-    out = f"{CONFIG['resultsDir']}test_results.md"
-
-    test = test.capitalize() if test else CONFIG["defaultPuzzleSet"]
-    if test not in CONFIG["puzzleSets"]:
-        print("Error: invalid test")
-        exit(1)
-
-    test_data = TestData(silent, test, encoding, *CONFIG.puzzle_values(test))
-    solver = SatSolver(test_data.num_puzzles, test, encoding)
-    tester = Tester(test_data, solver)
-    tester.test(out)
+        out = f"{CONFIG['resultsDir']}test_results.md"
+        run_tester(tester, out=out)
 
 
 def print_if_not(b: bool, str: str) -> None:
@@ -223,36 +217,53 @@ def summarize(results: RawTable, puzzle_sets) -> None:
         f.write(maker.table("Results Summary", results, cols))
 
 
+# run all tests and output results to a markdown file, optionally summarize
+# results from all tests. Tests are run in parallel using a pool of processes.
 def test_all(summary: bool = False, silent: bool = False) -> None:
     out = CONFIG["resultsDir"]
-    msg: str = "Testing {0} puzzles with {1} encoding..."
     print_if_not(silent, f"Running all tests, outputting to {out}")
     print_if_not(silent, "This may take a while...")
 
-    tester = Tester(silent=silent)
-    results: List[TestResult] = []
-    i: int = 1
-
-    # iterates through all test puzzle files and all encodings
+    # prepare a tester instance for each test
+    testers = []
     for test in CONFIG["puzzleSets"]:
-        # update tester parameters when switching tests
-        tester.update_params(
+        new_tester = Tester()
+        new_tester.update_params(
             TestData(True, test, Encoding.MINIMAL, *CONFIG.puzzle_values(test))
         )
-        for enc in Encoding:
-            name: str = enc.name.lower()
-            t: str = test.lower()
-            out_file: str = f"{out}{str(i).zfill(2)}-{t}-{name}.md"
+        testers.append(new_tester)
 
-            print_if_not(silent, format(msg.format(t, name)))
-            tester.update_encoding(enc)
-            results.append(tester.test(out_file))
-            i += 1
+    # divide these testers among a pool of processes for parallelization.
+    # this optimizes around having a large number of tests, but if there are
+    # few tests with lots of puzzles, this won't be as effective.
+    # (break large datasets into smaller ones to improve performance)
+    with Pool() as p:
+        results = p.map(run_tester, testers)
+        # flatten list of lists from map. Each tester returns a list of TestResults
+        # for each encoding tested, so we need to flatten this to a single list.
+        results = [item for sublist in results for item in sublist]
+        print_if_not(silent, "Done!")
+        # summarize results if requested
+        if summary:
+            summarize(results, tuple(CONFIG["puzzleSets"].keys()))
+            print_if_not(silent, f"Summary saved to {out}summary.md")
 
-    print_if_not(silent, "Done!")
-    if summary:
-        summarize(results, tuple(CONFIG["puzzleSets"].keys()))
-        print_if_not(silent, f"Summary saved to {out}summary.md")
+
+# run a single tester instance
+def run_tester(tester, out=None) -> List[TestResult]:
+    if out:
+        return tester.test(out)
+    out = f"{CONFIG['resultsDir']}"
+    result = []
+    for enc in Encoding:
+        tester.update_encoding(enc)
+        # give the tester a number to use for the test, (i) so that it can cache
+        # its fixed encodings in it's own file and not run into a problem where two processes
+        # are using the same cache file at the same time.
+        result.append(
+            tester.test(f"{out}{tester.test_name().lower()}-{enc.name.lower()}.md")
+        )
+    return result
 
 
 def decode_solutions(markdown: bool) -> None:

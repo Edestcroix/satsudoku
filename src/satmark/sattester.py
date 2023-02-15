@@ -5,8 +5,8 @@ from typing import Tuple
 from mdtable import TableMaker
 from satcoder import Encoding, encode
 
-from .satsolver import SatSolver
 from .conf import Config
+from .satsolver import SatSolver
 
 TestResult = Tuple[str, str, str, str, str, str]
 Averages = Tuple[str, str, str, str, str]
@@ -47,7 +47,7 @@ class Tester:
         self.__p: TestData = test_info
         self.solver: SatSolver = solver
         self.__update_working_dir(test_info.enc, test_info.test_type)
-    
+
     def test_name(self):
         return self.__p.test_type
 
@@ -66,6 +66,11 @@ class Tester:
         self.solver.update_parameters(enc=enc)
         self.__update_working_dir(enc, self.__p.test_type)
 
+    # Processes check for the existence of the cache file
+    # before reading it, so if one has started writing
+    # but not finished, the other processes start reading
+    # unfinished cache files. When sep_cache is true, each process
+    # creates its own cache and race conditions are avoided.
     def test(self, out_dir: str) -> TestResult:
         working_dir = self.__working_dir
         mkdir = f"mkdir -p {working_dir}"
@@ -86,7 +91,14 @@ class Tester:
                     f.readline()
                 puzzle = "".join(f.readline() for _ in range(self.__p.size))
                 # set write to true, so fixed cnf is cached
-                cnf = encode(puzzle, enc, f"{CONFIG['cacheDir']}fixed_cnf/")
+                test = self.__p.test_type
+                # put fixed cnf in directory name with the test name, this way
+                # if the program is mutltiproccessed, each process
+                # generates its own cache file and there won't be
+                # race conditions where one process reads an unfinished
+                # cache file.
+                cnf = encode(puzzle, enc, f"{CONFIG['cacheDir']}fixed_cnf/{test}/")
+
                 out_file = f"{working_dir}/sudoku_{str(i+1).zfill(2)}.cnf"
                 with open(out_file, "w") as out:
                     out.write(cnf)
