@@ -6,25 +6,10 @@ REQUIRED_KEYS = ["puzzleDir", "cacheDir", "defaultPuzzleSet", "puzzleSets"]
 REQUIRED_PUZZLE_KEYS = ["file", "numPuzzles", "offset", "size"]
 
 
-# Wrapper around dict that prevents modification, good because this ensures that
-# the config will never be modified after it is loaded. (Unless you cast it to a
-# regular dict and back, but don't do that)
-class lockedDict(dict):
-    def __init__(self, data):
-        self.__data = data
-        super().__init__(self.__data)
-
-    def __getitem__(self, key):
-        return self.__data[key]
-
-    def __setitem__(self):
-        raise TypeError("lockedDict is immutable")
-
-
 # Wrapper around dict that loads a json file and validates it on init, and
-# locks itself after init to be immutable, ensuring that the config will never
-# be modified after it is loaded during runtime. Also provides a few helper
-# functions to retrieve specific values from the config easier.
+# provides a few helper functions to retrieve specific values from the config easier.
+# DO NOT modify the config after it is initialized. I would make it immutable, but
+# that causes issues with multiprocessing not being able to duplicate the object.
 class Config(dict):
     def __init__(self, config_file: str):
         self.__config_file = config_file
@@ -37,14 +22,14 @@ class Config(dict):
         for puzzle_set in self.__config["puzzleSets"].values():
             puzzle_set["file"] = f"{self.__config['puzzleDir']}{puzzle_set['file']}"
 
-        # map all dicts in the config to lockedDicts
-        for key in self.__config.keys():
-            if type(self.__config[key]) == dict:
-                self.__config[key] = lockedDict(self.__config[key])
-
-        # lock the config
-        self.__config = lockedDict(self.__config)
-
+        # call super init after we have validated the config.
+        # method functions don't operate on super(), only self.__config,
+        # but we need to call super() to initialize the dict, and since
+        # Config is never meant to be modified, it doesn't matter that
+        # two copies of the config exist in memory, since they should be
+        # identical at all times.
+        # TODO: might be good for method functions to actually operate on super()
+        # not self.__config.
         super().__init__(self.__config)
 
     # on init, ensure that the config is valid, and all required keys and files are present
@@ -100,6 +85,3 @@ class Config(dict):
         p = self.puzzle(key)
         return p["file"], p["numPuzzles"], p["offset"], p["size"]
         
-
-    def __setitem__(self):
-        raise TypeError("Config is immutable")
