@@ -47,6 +47,9 @@ class Tester:
         self.__p: TestData = test_info
         self.solver: SatSolver = solver
         self.__update_working_dir(test_info.enc, test_info.test_type)
+    
+    def test_name(self):
+        return self.__p.test_type
 
     def __update_working_dir(self, enc: Encoding, test: str):
         self.__working_dir = f"{CONFIG['cacheDir']}{enc.name.lower()}/{test.lower()}"

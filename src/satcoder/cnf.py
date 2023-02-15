@@ -121,7 +121,7 @@ def __fixed_cnf(encoding=Encoding.MINIMAL) -> tuple:
     cnf += __num_once_in_box()
 
     if encoding in [Encoding.EFFICIENT, Encoding.EXTENDED]:
-        cnf += __exactly_one_number()
+        cnf += __at_most_one_number()
     if encoding == Encoding.EXTENDED:
         cnf += __each_number_at_least_once_row()
         cnf += __each_number_at_least_once_col()
@@ -137,53 +137,53 @@ def __fixed_cnf(encoding=Encoding.MINIMAL) -> tuple:
 
 def __cell_one_number() -> str:
     cnf = ""
-    for y, x in itertools.product(range(1, 10), range(1, 10)):
-        for z in range(1, 10):
-            cnf += f"{str(__enc(x, y, z))} "
+    for i, j in itertools.product(range(1, 10), range(1, 10)):
+        for k in range(1, 10):
+            cnf += f"{str(__enc(i, j, k))} "
         cnf += "0\n"
     return cnf
 
 
 def __num_once_in_row() -> str:
     cnf = ""
-    for y, z, x in itertools.product(range(1, 10), range(1, 10), range(1, 10)):
-        for i in range((x + 1), 10):
-            cnf += f"-{str(__enc(x, y, z))} -{str(__enc(i, y, z))}" + " 0\n"
+    for i, k, j in itertools.product(range(1, 10), range(1, 10), range(1, 9)):
+        for l in range((j + 1), 10):
+            cnf += f"-{str(__enc(i, j, k))} -{str(__enc(i, l, k))}" + " 0\n"
     return cnf
 
 
 def __num_once_in_column() -> str:
     cnf = ""
-    for x, z, y in itertools.product(range(1, 10), range(1, 10), range(1, 10)):
-        for i in range((y + 1), 10):
-            cnf += f"-{str(__enc(x, y, z))} -{str(__enc(x, i, z))}" + " 0\n"
+    for j, k, i in itertools.product(range(1, 10), range(1, 10), range(1, 9)):
+        for l in range((i + 1), 10):
+            cnf += f"-{str(__enc(i, j, k))} -{str(__enc(l, j, k))}" + " 0\n"
     return cnf
 
 
 def __num_once_in_box() -> str:
     cnf = ""
-    for z, i, j, x, y in itertools.product(
-        range(1, 10), range(3), range(3), range(1, 4), range(1, 4)
+    for k, a, b, u, v in itertools.product(
+        range(1, 10), range(3), range(3), range(1, 4), range(1, 3)
     ):
-        for k in range((y + 1), 4):
+        for w in range((v + 1), 4):
             cnf += (
-                f"-{str(__enc(3 * i + x, 3 * j + y, z))} -{str(__enc(3 * i + x, 3 * j + k, z))}"
+                f"-{str(__enc(3 * a + u, 3 * b + v, k))} -{str(__enc(3 * a + u, 3 * b + w, k))}"
                 + " 0\n"
             )
-    for z, i, j, x, y in itertools.product(
-        range(1, 10), range(3), range(3), range(1, 4), range(1, 4)
+    for k, a, b, u, v in itertools.product(
+        range(1, 10), range(3), range(3), range(1, 3), range(1, 4)
     ):
-        for k, l in itertools.product(range((x + 1), 4), range(1, 4)):
+        for w, t in itertools.product(range((u + 1), 4), range(1, 4)):
             cnf += (
-                f"-{str(__enc(3 * i + x, 3 * j + y, z))} -{str(__enc(3 * i + k, 3 * j + l, z))}"
+                f"-{str(__enc(3 * a + u, 3 * b + v, k))} -{str(__enc(3 * a + w, 3 * b + t, k))}"
                 + " 0\n"
             )
     return cnf
 
 
-def __exactly_one_number() -> str:
+def __at_most_one_number() -> str:
     cnf = ""
-    for i, j, k in itertools.product(range(1, 10), range(1, 10), range(1, 10)):
+    for i, j, k in itertools.product(range(1, 10), range(1, 10), range(1, 9)):
         for l in range((k + 1), 10):
             cnf += f"-{str(__enc(i, j, k))} -{str(__enc(i, j, l))}" + " 0\n"
     return cnf
@@ -209,8 +209,8 @@ def __each_number_at_least_once_col() -> str:
 
 def __each_number_at_least_once_box() -> str:
     cnf = ""
-    for i, j, k in itertools.product(range(3), range(3), range(1, 10)):
-        for x, y in itertools.product(range(1, 4), range(1, 4)):
-            cnf += f"{str(__enc(3 * i + x, 3 * j + y, k))} "
+    for k, a, b in itertools.product(range(1, 10), range(3), range(3)):
+        for u, v in itertools.product(range(1, 4), range(1, 4)):
+            cnf += f"{str(__enc(3 * a + u, 3 * b + v, k))} "
         cnf += "0\n"
     return cnf

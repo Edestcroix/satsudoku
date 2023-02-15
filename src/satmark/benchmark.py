@@ -268,34 +268,35 @@ def decode_dir(out_dir: str, in_dir: str, markdown: bool) -> None:
     os.system(f"mkdir -p {CONFIG['cacheDir']}{out_dir}")
     # count how many files are in standard_dir
     count = len(list(os.listdir(in_dir)))
+    maker = TableMaker()
     for i in range(count):
         filename = f"{in_dir}sudoku_{str(i + 1).zfill(2)}.out"
         # read file and pass to Sud.convert
         with open(filename, "r") as in_file:
             lines = in_file.readlines()
 
-            decoded = decode(lines[1])
+            sudoku = decode(lines[1])
 
             outfile = f"{CONFIG['cacheDir']}{out_dir}sudoku_{str(i + 1).zfill(2)}"
-            if markdown:
-                output = sudoku_to_table(decoded, f"Solution {str(i+1).zfill(2)}")
-                outfile += ".md"
-            else:
-                output = decoded
-                outfile += ".txt"
+
+            output = (
+                sudoku_to_table(sudoku, f"Solution {str(i+1).zfill(2)}", maker)
+                if markdown
+                else sudoku
+            )
+            outfile += ".md" if markdown else ".txt"
 
             with open(outfile, "w") as out:
                 out.write(output)
 
 
-def sudoku_to_table(sudoku: str, title: str) -> Table:
+def sudoku_to_table(sudoku: str, title: str, maker: TableMaker) -> Table:
     # convert a sudoku puzzle to a table
     cell_grid = sudoku.replace(" ", "").split("\n")
     cell_grid = [line for line in cell_grid if line != ""]
     cell_grid = [list(line) for line in cell_grid]
     dummy = [""] * 9
     cell_grid = [dummy] + cell_grid
-    maker = TableMaker()
     return maker.table(title, cell_grid)
 
 
