@@ -1,13 +1,14 @@
-from typing import List, Tuple, TypeVar
+from typing import List, Tuple, TypeVar, Callable, Union
 
 RawTable = List[TypeVar("Row", List, Tuple)]
-Table = str
+MDTable = str
+SepFunc = Union[Callable[[int], str], None]
 
 
 class TableMaker:
-    def __init__(self, sep_every=3, sep_func=None, new_line=True):
+    def __init__(self, sep_every=3, sep_func: SepFunc = None, new_line=True):
         self.sep_every = sep_every
-        self.sep_func = sep_func
+        self.sep_func: Union[Callable, None] = sep_func
         self.new_line = new_line
         self.sep = sep_func is not None
 
@@ -23,7 +24,7 @@ class TableMaker:
 
     # if the class was initialized without a separator function,
     # col_titles will be ignored.
-    def table(self, title, rows: RawTable, col_titles=None) -> Table:
+    def table(self, title: str, rows: RawTable, col_titles=None) -> MDTable:
         # find the longest string in each column
         col_widths = (
             [max(len(str(x)) for x in col) for col in zip(*rows + [col_titles])]
@@ -43,15 +44,18 @@ class TableMaker:
             elif not self.sep and i == 1:
                 out += sep_line
 
-            out += (
-                "| "
-                + " | ".join((str(x).ljust(col_widths[j]) for j, x in enumerate(row)))
-                + " |\n"
-            )
+            out += self.__row_line(col_widths, row)
 
         if self.new_line:
             out += "\n"
-        return Table(out)
+        return MDTable(out)
+
+    def __row_line(self, col_widths, row):
+        return (
+            "| "
+            + " | ".join((str(col).ljust(col_widths[j]) for j, col in enumerate(row)))
+            + " |\n"
+        )
 
     def __table_sep(self, sep_count, sep_func, sep_line, col_widths, col_titles):
         out = ""

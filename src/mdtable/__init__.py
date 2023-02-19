@@ -1,1 +1,1 @@
-from .mdtable import TableMaker, Table, RawTable
+from .mdtable import TableMaker, MDTable, RawTable

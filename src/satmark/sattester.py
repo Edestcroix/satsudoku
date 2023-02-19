@@ -51,9 +51,6 @@ class Tester:
     def test_name(self):
         return self.__p.test_type
 
-    def __update_working_dir(self, enc: Encoding, test: str):
-        self.__working_dir = f"{CONFIG['cacheDir']}{enc.name.lower()}/{test.lower()}"
-
     def update_params(self, test_info: TestData):
         self.__p = test_info
         self.solver.update_parameters(
@@ -66,11 +63,6 @@ class Tester:
         self.solver.update_parameters(enc=enc)
         self.__update_working_dir(enc, self.__p.test_type)
 
-    # Processes check for the existence of the cache file
-    # before reading it, so if one has started writing
-    # but not finished, the other processes start reading
-    # unfinished cache files. When sep_cache is true, each process
-    # creates its own cache and race conditions are avoided.
     def test(self, out_dir: str) -> TestResult:
         working_dir = self.__working_dir
         mkdir = f"mkdir -p {working_dir}"
@@ -82,6 +74,9 @@ class Tester:
 
         self.__output_results(table_rows, out_dir)
         return (self.__p.enc.name.capitalize(),) + averages
+
+    def __update_working_dir(self, enc: Encoding, test: str):
+        self.__working_dir = f"{CONFIG['cacheDir']}{enc.name.lower()}/{test.lower()}"
 
     def __encode_puzzles(self, working_dir):
         enc = self.__p.enc
@@ -116,10 +111,10 @@ class Tester:
         if table_rows != []:
             cols = (
                 "Decisions",
-                "Decision Rate",
+                "Decision Rate (dcsns/sec)",
                 "Propagations",
-                "Propagation Rate",
-                "CPU Time",
+                "Propagation Rate (props/sec)",
+                "CPU Time (sec)",
             )
             title = (
                 f"{self.__p.test_type} Test ({self.__p.enc.name.capitalize()} Encoding)"

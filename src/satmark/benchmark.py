@@ -4,7 +4,7 @@ import shutil
 from multiprocessing import Pool
 from typing import List
 
-from mdtable import RawTable, Table, TableMaker
+from mdtable import RawTable, MDTable, TableMaker
 from satcoder import Encoding, decode
 
 from .conf import Config
@@ -18,7 +18,6 @@ if not shutil.which("minisat"):
 
 # load the config file
 WORKING_DIR = os.getcwd()
-CONFIG_FILE = f"{WORKING_DIR}/sat_config.json"
 CONFIG = Config(f"{WORKING_DIR}/sat_config.json")
 
 
@@ -31,35 +30,16 @@ def main():
         shutil.rmtree(CONFIG["resultsDir"])
         exit(0)
 
-    # if args.All is true, then flip the values of all the other
-    # arguments to their opposite. This way, if -A is specified, the actions of
-    # all other arguments are performed, unless they are also specified.
-    # (this way, can say do all tests, but don't summarize, instead of
-    # having to specify all the other arguments except summarize)
-    if args.All:
-        all_tests = True
-        summarize = not args.summarize
-        keep = not args.keep
-        decode = not args.decode
-        markdown = not args.markdown
-    else:
-        all_tests = args.all
-        summarize = args.summarize
-        keep = args.keep
-        decode = args.decode
-        markdown = args.markdown
+    all_tests, summarize, keep, decode, markdown = get_arg_opts(args)
 
-    if summarize and not all_tests:
-        print("Error: -S must be used with -a")
-        exit(1)
+    validate_args(all_tests, summarize, args.test, args.enc)
 
     make_dirs()
 
-    if args.all and (args.test != "" or args.enc != ""):
-        print("Error: -a/-C cannot be used with flags other -s")
-        return
-
-    run_tests(all_tests, args.silent, summarize, args.enc, args.test)
+    if all_tests:
+        test_all(summarize, args.silent)
+    else:
+        test_single(args.test, args.enc, args.silent)
 
     if decode:
         decode_solutions(markdown)
@@ -68,15 +48,6 @@ def main():
         copy_working_dir(args.silent)
     else:
         shutil.rmtree(CONFIG["cacheDir"])
-
-
-# make the output directories if they don't exist
-def make_dirs() -> None:
-    if os.path.isdir(CONFIG["cacheDir"]):
-        shutil.rmtree(CONFIG["cacheDir"])
-    os.mkdir(CONFIG["cacheDir"])
-    if not os.path.isdir(CONFIG["resultsDir"]):
-        os.mkdir(CONFIG["resultsDir"])
 
 
 # prepare the arguments for the script
@@ -126,26 +97,50 @@ def setup_args(parser: argparse.ArgumentParser) -> argparse.Namespace:
     return parser.parse_args()
 
 
-# identify and run tests based on the arguments passed
-def run_tests(all_tests, silent, summary, enc, test) -> None:
-    if all_tests:
-        test_all(summary, silent)
-    else:
-        if not enc:
-            encoding = Encoding.MINIMAL
-        elif enc in {"minimal", "efficient", "extended"}:
-            encoding = Encoding[enc.upper()]
-        else:
-            print("Error: invalid encoding")
-            exit(1)
-        test = test.capitalize() if test else CONFIG["defaultPuzzleSet"]
-        tester = Tester()
-        tester.update_params(
-            TestData(silent, test, encoding, *CONFIG.puzzle_values(test))
-        )
+def get_arg_opts(args):
+    # if args.All is true, then flip the values of all the other boolean
+    # arguments to their opposite. This way, if -A is specified, the actions of
+    # all other arguments are performed, unless they are also specified.
+    # (this way, can say do all tests, but don't summarize, instead of
+    # having to specify all the other arguments except summarize)
+    opts = (args.All, args.summarize, args.keep, args.decode, args.markdown)
+    return (True, ) + tuple(not x for x in opts[1:]) if args.All else opts
 
-        out = f"{CONFIG['resultsDir']}test_results.md"
-        run_tester(tester, out=out)
+
+def validate_args(all_tests, summarize, test, enc):
+    if summarize and not all_tests:
+        print("Error: -S must be used with -a")
+        exit(1)
+
+    if all_tests and (test != "" or enc != ""):
+        print("Error: -a/-C cannot be used with flags other -s")
+        exit(1)
+
+
+# make the output directories if they don't exist
+def make_dirs() -> None:
+    if os.path.isdir(CONFIG["cacheDir"]):
+        shutil.rmtree(CONFIG["cacheDir"])
+    os.mkdir(CONFIG["cacheDir"])
+    if not os.path.isdir(CONFIG["resultsDir"]):
+        os.mkdir(CONFIG["resultsDir"])
+
+
+# identify and run tests based on the arguments passed
+def test_single(test, enc, silent) -> None:
+    if not enc:
+        encoding = Encoding.MINIMAL
+    elif enc in {"minimal", "efficient", "extended"}:
+        encoding = Encoding[enc.upper()]
+    else:
+        print("Error: invalid encoding")
+        exit(1)
+    test = test.capitalize() if test else CONFIG["defaultPuzzleSet"]
+    tester = Tester()
+    tester.update_params(TestData(silent, test, encoding, *CONFIG.puzzle_values(test)))
+
+    out = f"{CONFIG['resultsDir']}test_results.md"
+    run_tester(tester, out=out)
 
 
 # run all tests and output results to a markdown file, optionally summarize
@@ -176,11 +171,11 @@ def test_all(summary: bool = False, silent: bool = False) -> None:
         print_if_not(silent, "Done!")
         # summarize results if requested
         if summary:
-            summarize(results, tuple(CONFIG["puzzleSets"].keys()))
+            summarize(results)
             print_if_not(silent, f"Summary saved to {out}summary.md")
 
 
-# run a single tester instance
+# runs a single tester instance
 def run_tester(tester, out=None) -> List[TestResult]:
     if out:
         return tester.test(out)
@@ -197,11 +192,12 @@ def run_tester(tester, out=None) -> List[TestResult]:
     return result
 
 
-def summarize(results: RawTable, puzzle_sets) -> None:
+def summarize(results: RawTable) -> None:
     sum_file = f"{CONFIG['resultsDir']}summary.md"
     # header is generated from the keys of the puzzles dict,
     # this allows for easy addition of tests with new puzzles
     # and the summary will automatically update
+    puzzle_sets = tuple(CONFIG["puzzleSets"].keys())
 
     def header_func(x):
         return f"Averages ― {puzzle_sets[x-1]} Puzzles"
@@ -301,7 +297,7 @@ def decode_dir(out_dir: str, in_dir: str, markdown: bool) -> None:
                 out.write(output)
 
 
-def sudoku_to_table(sudoku: str, title: str, maker: TableMaker) -> Table:
+def sudoku_to_table(sudoku: str, title: str, maker: TableMaker) -> MDTable:
     # convert a sudoku puzzle to a table
     cell_grid = sudoku.replace(" ", "").split("\n")
     cell_grid = [line for line in cell_grid if line != ""]

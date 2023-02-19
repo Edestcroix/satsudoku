@@ -14,7 +14,7 @@ CONFIG_FILE = f"{os.getcwd()}/sat_config.json"
 
 
 class SatSolver:
-    __DECISIONS, __DECISION_RATE, __PROPS, __PROP_RATE, __TIME = range(5)
+    __DECISIONS, __DEC_RATE, __PROPS, __PROP_RATE, __TIME = range(5)
 
     def __init__(self, pc: int, test: str, enc=Encoding.MINIMAL) -> None:
         self.config = Config(CONFIG_FILE)
@@ -26,14 +26,13 @@ class SatSolver:
         self.__table_rows: list = []
         self.params = {
             self.__DECISIONS: [],
-            self.__DECISION_RATE: [],
+            self.__DEC_RATE: [],
             self.__PROPS: [],
             self.__PROP_RATE: [],
             self.__TIME: [],
         }
 
     # Update the testing environment with new parameters
-
     def update_parameters(self, test=None, enc=None, pc=None):
         if test:
             self.__work_dir = f"{self.config['cacheDir']}sat/{test.lower()}/"
@@ -64,24 +63,24 @@ class SatSolver:
     def __get_data(self, data):
         decision, _, decision_rate = re.findall(r"[-+]?\d*\.\d+|\d+", data[0])[:3]
         self.params[self.__DECISIONS].append(decision)
-        self.params[self.__DECISION_RATE].append(decision_rate)
-        decision_rate = f"{decision_rate} decisions/sec"
+        self.params[self.__DEC_RATE].append(decision_rate)
 
         props_data = tuple(re.findall(r"[-+]?\d*\.\d+|\d+", data[1])[:2])
         prop, p_rate = props_data
         self.params[self.__PROPS].append(prop)
         self.params[self.__PROP_RATE].append(p_rate)
-        p_rate = f"{p_rate} props/sec"
 
         cpu = data[2].split(":")
-        self.params[self.__TIME].append(cpu[1].strip().replace(" s", ""))
+        time = cpu[1].strip()
+        time = time.replace(" s", "")
+        self.params[self.__TIME].append(time)
 
         return (
             decision.strip(),
             decision_rate.strip(),
             prop.strip(),
             p_rate,
-            cpu[1].strip(),
+            time.strip(),
         )
 
     def __solve_puzzle(self, i):
@@ -109,15 +108,12 @@ class SatSolver:
 
         lists: List[list] = list(self.params.values())
         times: list = self.params[self.__TIME]
+        # more decimal places are used for times, because they would round to 0
+        # otherwise
         av_time: str = av(times, self.config["round"] + 2)
         averages: list = [
             av(test_results, self.config["round"]) for test_results in lists[:-1]
         ] + [av_time]
-        averages[
-            self.__DECISION_RATE
-        ] = f"{averages[self.__DECISION_RATE]} decisions/sec"
-        averages[self.__PROP_RATE] = f"{averages[self.__PROP_RATE]} props/sec"
-        averages[self.__TIME] = f"{av_time} s"
         self.__table_rows.append(tuple(averages))
 
         return tuple(averages)
