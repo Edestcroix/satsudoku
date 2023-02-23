@@ -13,6 +13,9 @@ REQUIRED_PUZZLE_KEYS = ["file", "numPuzzles", "offset", "size"]
 class Config(dict):
     def __init__(self, config_file: str):
         self.__config_file = config_file
+        if not os.path.isfile(self.__config_file):
+            print(f"Error: Config file {self.__config_file} not found")
+            exit(1)
         self.__fix = None
         with open(self.__config_file, "r") as f:
             self.__config = json.load(f)
@@ -39,18 +42,19 @@ class Config(dict):
         # ensure all required keys are present
         for key in REQUIRED_KEYS:
             if key not in self.__config:
-                raise ValueError(f"configParser is missing required key: {key}")
+                print(f"configParser is missing required key: {key}")
+                exit(1)
         # in puzzleSets, ensure all required keys are present
         for puzzle_set in self.__config["puzzleSets"].values():
             for key in REQUIRED_PUZZLE_KEYS:
                 if key not in puzzle_set:
-                    raise ValueError(f"configParser is missing required key: {key}")
+                    print(f"Error: configParser is missing required key: {key}")
+                    exit(1)
                 if key == "file" and not os.path.isfile(
                     self.__config["puzzleDir"] + puzzle_set[key]
                 ):
-                    raise FileNotFoundError(
-                        f"configParser is missing required file: {puzzle_set[key]}"
-                    )
+                    print(f"configParser is missing required file: {puzzle_set[key]}")
+                    exit(1)
 
     def get_config(self) -> dict:
         return self.__config
