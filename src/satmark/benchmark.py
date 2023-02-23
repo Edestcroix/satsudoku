@@ -206,8 +206,8 @@ def summarize(results: RawTable) -> None:
         "Encoding",
         "Decisions",
         "Decision Rate (dcsns/sec)",
-        "Propositions",
-        "Proposition Rate (props/sec)",
+        "Propagations",
+        "Propagation Rate (props/sec)",
         "CPU Time (seconds)",
     ]
     with open(sum_file, "w") as f:
