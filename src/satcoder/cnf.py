@@ -104,13 +104,12 @@ def __create_cnf(
 
 def __fixed_cnf(encoding=Encoding.MINIMAL) -> tuple:
     header = ""
-    match encoding:
-        case Encoding.MINIMAL:
-            header = "p cnf 729 8829\n"
-        case Encoding.EFFICIENT:
-            header = "p cnf 729 11745\n"
-        case Encoding.EXTENDED:
-            header = "p cnf 729 11988\n"
+    if encoding == Encoding.MINIMAL:
+        header = "p cnf 729 8829\n"
+    elif encoding == Encoding.EFFICIENT:
+        header = "p cnf 729 11745\n"
+    elif encoding == Encoding.EXTENDED:
+        header = "p cnf 729 11988\n"
 
     cnf = __cell_one_number()
 
