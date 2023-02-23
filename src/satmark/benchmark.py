@@ -171,8 +171,17 @@ def test_all(summary: bool = False, silent: bool = False) -> None:
         print_if_not(silent, "Done!")
         # summarize results if requested
         if summary:
-            summarize(results)
-            print_if_not(silent, f"Summary saved to {out}summary.md")
+            prepare_summary(results, silent, out)
+
+
+def prepare_summary(results, silent, out):
+    # each TestResult has two tuples, one for averages and one for min/max,
+    # create lists for each.
+    averages = [result[0] for result in results]
+    maxes = [result[1] for result in results]
+    mins = [result[2] for result in results]
+    write_summary(averages, maxes, mins)
+    print_if_not(silent, f"Summary saved to {out}summary.md")
 
 
 # runs a single tester instance
@@ -192,7 +201,7 @@ def run_tester(tester, out=None) -> List[TestResult]:
     return result
 
 
-def summarize(results: RawTable) -> None:
+def write_summary(averages: RawTable, maxes: RawTable, mins: RawTable) -> None:
     sum_file = f"{CONFIG['resultsDir']}summary.md"
     # header is generated from the keys of the puzzles dict,
     # this allows for easy addition of tests with new puzzles
@@ -200,7 +209,7 @@ def summarize(results: RawTable) -> None:
     puzzle_sets = tuple(CONFIG["puzzleSets"].keys())
 
     def header_func(x):
-        return f"Averages ― {puzzle_sets[x-1]} Puzzles"
+        return f"{puzzle_sets[x-1]} Puzzles"
 
     cols = [
         "Encoding",
@@ -212,7 +221,10 @@ def summarize(results: RawTable) -> None:
     ]
     with open(sum_file, "w") as f:
         maker = TableMaker(sep_every=3, sep_func=header_func, new_line=False)
-        f.write(maker.table("Results Summary", results, cols))
+        f.write(maker.table("Minimum Values", mins, cols))
+        f.write(maker.table("Maximum Values", maxes, cols))
+        f.write(maker.table("Average Values", averages, cols))
+        
 
 
 def print_if_not(b: bool, str: str) -> None:

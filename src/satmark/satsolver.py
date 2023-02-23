@@ -31,6 +31,7 @@ class SatSolver:
             self.__PROP_RATE: [],
             self.__TIME: [],
         }
+        self.averages, self.min_vals, self.min_vals = [], [], []
 
     # Update the testing environment with new parameters
     def update_parameters(self, test=None, enc=None, pc=None):
@@ -45,20 +46,22 @@ class SatSolver:
             self.__puzzle_count = pc
 
     def solve(self):
+        self.__clear()
         # iterate through CNF output and call minisat on each
         os.system(f"mkdir -p {self.__work_dir}")
 
         for i in range(self.__puzzle_count):
             self.__solve_puzzle(i)
 
-        results = (self.__compute_averages(), self.__table_rows.copy())
-        self.__clear()
-        return results
+        self.__compute_min_max()
+        self.__compute_averages()
+        return self.__table_rows.copy()
 
     def __clear(self) -> None:
         self.__table_rows = []
         for key in self.params:
             self.params[key] = []
+        self.min_vals, self.max_vals, self.averages = [], [], []
 
     def __get_data(self, data):
         decision, _, decision_rate = re.findall(r"[-+]?\d*\.\d+|\d+", data[0])[:3]
@@ -102,7 +105,7 @@ class SatSolver:
 
         self.__table_rows.append(self.__get_data(data))
 
-    def __compute_averages(self) -> Averages:
+    def __compute_averages(self):
         def av(x: List[str], r: int) -> str:
             return str(round(sum(float(x) for x in x) / len(x), r))
 
@@ -116,4 +119,8 @@ class SatSolver:
         ] + [av_time]
         self.__table_rows.append(tuple(averages))
 
-        return tuple(averages)
+    def __compute_min_max(self):
+        get_max = lambda l: max(float(x) for x in l)
+        get_min = lambda l: min(float(x) for x in l)
+        self.__table_rows.append(tuple(get_min(x) for x in self.params.values()))
+        self.__table_rows.append(tuple(get_max(x) for x in self.params.values()))

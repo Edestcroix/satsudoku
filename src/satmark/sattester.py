@@ -4,12 +4,15 @@ from typing import Tuple
 
 from mdtable import TableMaker
 from satcoder import Encoding, encode
+from copy import copy
 
 from .conf import Config
 from .satsolver import SatSolver
 
-TestResult = Tuple[str, str, str, str, str, str]
 Averages = Tuple[str, str, str, str, str]
+Min = Tuple[str, str, str, str, str, str]
+Max = Tuple[str, str, str, str, str, str]
+TestResult = Tuple[Averages, Min, Max]
 
 
 CONFIG = Config(f"{os.getcwd()}/sat_config.json")
@@ -70,10 +73,13 @@ class Tester:
 
         self.__encode_puzzles(working_dir)
 
-        averages, table_rows = self.solver.solve()
-
+        table_rows = self.solver.solve()
         self.__output_results(table_rows, out_dir)
-        return (self.__p.enc.name.capitalize(),) + averages
+        averages = table_rows[-1]
+        maxes = table_rows[-2]
+        mins = table_rows[-3]
+        name = self.__p.enc.name.capitalize()
+        return ((self.__p.enc.name.capitalize(),) + averages, (name,) + maxes, (name,) + mins)
 
     def __update_working_dir(self, enc: Encoding, test: str):
         self.__working_dir = f"{CONFIG['cacheDir']}{enc.name.lower()}/{test.lower()}"
@@ -104,9 +110,14 @@ class Tester:
         # after this, one more table will be added for the averages,
         # so once i passes c, the header will be changed to "Averages".
         def header_func(i):
-            return (
-                f"Test {str(i).zfill(2)}" if i <= self.__p.num_puzzles else "Averages"
-            )
+            if i <= self.__p.num_puzzles:
+                return f"Test {str(i).zfill(2)}"
+            elif i == self.__p.num_puzzles + 1:
+                return "Minimums"
+            elif i == self.__p.num_puzzles + 2:
+                return "Maximums"
+            else:
+                return "Averages"
 
         if table_rows != []:
             cols = (
